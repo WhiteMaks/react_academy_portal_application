@@ -1,0 +1,54 @@
+.content {
+    margin-bottom: 40px;
+}
+
+.content nav {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 40px;
+}
+
+.content a {
+    flex: 1;
+
+    display: flex;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--color-black);
+    text-decoration: none;
+
+    margin-bottom: 16px;
+}
+
+.content a:hover {
+    background: var(--color-brown-light-hover);
+}
+
+.content a:active {
+    background: var(--color-brown-light-active);
+}
+
+.content nav > a:last-child {
+    margin-bottom: 0;
+}
+
+.active {
+    background: var(--color-brown-light);
+}
+
+.content .active:hover {
+    background: var(--color-brown-light);
+}
+
+.content .active:active {
+    background: var(--color-brown-light-active);
+}
+
+.block {
+    display: flex;
+    align-items: center;
+}
+
+.block img {
+    margin-right: 9px;
+}
