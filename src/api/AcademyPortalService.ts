@@ -2,6 +2,7 @@ import GetMicroserviceV1Response from "./models/microservice/GetMicroserviceV1Re
 import PostUserTokenV1Response from "./models/user/PostUserTokenV1Response";
 import PostUserTokenV1Request from "./models/user/PostUserTokenV1Request";
 import GetUserV1Response from "./models/user/GetUserV1Response";
+import {ApiError} from "./ApiError";
 
 class AcademyPortalService {
 	private static instance: AcademyPortalService | null = null;
@@ -48,44 +49,78 @@ class AcademyPortalService {
 
 	public async getUserV1(): Promise<GetUserV1Response> {
 		const url = this.host + this.USER_V1;
-		const response = await fetch(
-			url,
-			{
+		let response: Response;
+		try {
+			response = await fetch(url, {
 				method: "GET",
 				headers: this.generateHeaders()
-			}
-		);
-
-		if (!response.ok) {
-			throw new Error("Ошибка получения данных пользователя");
+			});
+		} catch {
+			throw new ApiError("service");
 		}
 
-		const data = await response.json();
-		return data as GetUserV1Response;
+		if (!response.ok) {
+			throw new ApiError(response.status === 401 ? "unauthorized" : "service", response.status);
+		}
+
+		try {
+			const data: unknown = await response.json();
+			if (!this.isUserResponse(data)) {
+				throw new ApiError("service", response.status);
+			}
+			return data;
+		} catch {
+			throw new ApiError("service", response.status);
+		}
 	}
 
 	public async postUserTokenV1(request: PostUserTokenV1Request): Promise<PostUserTokenV1Response> {
 		const url = this.host + this.USER_TOKEN_V1;
-		const response = await fetch(
-			url,
-			{
+		let response: Response;
+		try {
+			response = await fetch(url, {
 				method: "POST",
+				headers: {"Content-Type": "application/json"},
 				body: JSON.stringify(request)
-			}
-		);
-
-		if (!response.ok) {
-			throw new Error("Ошибка получения токена");
+			});
+		} catch {
+			throw new ApiError("service");
 		}
 
-		const data = await response.json();
-		return data as PostUserTokenV1Response;
+		if (!response.ok) {
+			if (response.status === 401) {
+				throw new ApiError("credentials", response.status);
+			}
+			throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+		}
+
+		try {
+			const data: unknown = await response.json();
+			if (!this.isTokenResponse(data)) {
+				throw new ApiError("service", response.status);
+			}
+			return data;
+		} catch {
+			throw new ApiError("service", response.status);
+		}
 	}
 
 	private generateHeaders(): HeadersInit {
-		return {
-			"Authorization": `Bearer ${localStorage.getItem("token")}`
-		}
+		const token = localStorage.getItem("token");
+		return token ? {"Authorization": `Bearer ${token}`} : {};
+	}
+
+	private isRecord(value: unknown): value is Record<string, unknown> {
+		return typeof value === "object" && value !== null;
+	}
+
+	private isUserResponse(value: unknown): value is GetUserV1Response {
+		return this.isRecord(value) && typeof value.id === "number" &&
+			typeof value.username === "string" && typeof value.role === "string";
+	}
+
+	private isTokenResponse(value: unknown): value is PostUserTokenV1Response {
+		return this.isRecord(value) && typeof value.token === "string" && value.token.length > 0;
 	}
 }
 

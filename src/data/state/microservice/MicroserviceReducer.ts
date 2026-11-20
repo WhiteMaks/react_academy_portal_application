@@ -29,10 +29,12 @@ export const microserviceSlice = createSlice({
 	extraReducers: builder => {
 		builder.addCase(fetchMicroservice.pending, state => {
 			state.loading = true;
+			state.error = undefined;
 		});
 		builder.addCase(fetchMicroservice.fulfilled, (state, action) => {
 			state.loading = false;
 			state.service = action.payload;
+			state.error = undefined;
 		});
 		builder.addCase(fetchMicroservice.rejected, (state, action) => {
 			state.loading = false;

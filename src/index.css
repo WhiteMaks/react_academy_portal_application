@@ -5,6 +5,19 @@
     --color-brown-light: #B1A192;
     --color-brown-light-hover: #C7BBB0;
     --color-brown-light-active: #AA9A8B;
+
+    --mvp-canvas: #F7F4F1;
+    --mvp-surface: #FFFFFF;
+    --mvp-border: #D9D1CC;
+    --mvp-field-border: #8C827B;
+    --mvp-outline: #847A73;
+    --mvp-text: #342B33;
+    --mvp-muted: #625B63;
+    --mvp-primary: #4C3F4F;
+    --mvp-error: #8C2F3E;
+    --mvp-error-border: #A34754;
+    --mvp-error-bg: #FFF0F2;
+    --mvp-focus: #2857A4;
 }
 
 body {

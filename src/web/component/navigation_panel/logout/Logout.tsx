@@ -1,16 +1,21 @@
 import React, {FC, useEffect} from "react";
-import {useGlobalDispatch} from "../../../../data/state/store";
-import {userTokenActions} from "../../../../data/state/user/UserTokenReducer";
 import {Navigate} from "react-router-dom";
+import {logoutUser} from "../../../../data/state/user/UserTokenReducer";
+import {useGlobalDispatch, useGlobalSelector} from "../../../../data/state/store";
 
 const Logout: FC = () => {
-	const globalDispatch = useGlobalDispatch();
+	const dispatch = useGlobalDispatch();
+	const token = useGlobalSelector(state => state.userTokenReducer.token);
 
 	useEffect(() => {
-		globalDispatch(userTokenActions.removeUserToken());
-	}, [globalDispatch]);
+		void dispatch(logoutUser());
+	}, [dispatch]);
 
-	return <Navigate to="/login" replace/>;
-}
+	if (token === null) {
+		return <Navigate to="/login" replace/>;
+	}
+
+	return <div role="status" aria-live="polite">Выполняем выход…</div>;
+};
 
 export default Logout;

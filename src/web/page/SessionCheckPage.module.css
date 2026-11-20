@@ -1,0 +1,70 @@
+.page {
+	box-sizing: border-box;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px 20px;
+	background: var(--mvp-canvas);
+}
+
+.card {
+	box-sizing: border-box;
+	width: min(440px, 100%);
+	padding: 32px;
+	border: 1px solid var(--mvp-border);
+	border-radius: 16px;
+	background: var(--mvp-surface);
+	color: var(--mvp-text);
+}
+
+.card h1 {
+	margin: 0 0 12px;
+	font-size: 26px;
+}
+
+.card p {
+	margin: 0 0 24px;
+	color: var(--mvp-muted);
+	line-height: 1.5;
+}
+
+.actions {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.primaryButton,
+.secondaryButton {
+	min-height: 48px;
+	border-radius: 8px;
+	padding: 10px 16px;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.primaryButton {
+	border: 0;
+	background: var(--mvp-primary);
+	color: #fff;
+}
+
+.secondaryButton {
+	border: 1px solid var(--mvp-outline);
+	background: #fff;
+	color: var(--mvp-primary);
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
+	outline: 3px solid var(--mvp-focus);
+	outline-offset: 2px;
+}
+
+@media (max-width: 374px) {
+	.card {
+		padding: 24px 12px;
+	}
+}
