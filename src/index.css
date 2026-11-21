@@ -18,6 +18,15 @@
     --mvp-error-border: #A34754;
     --mvp-error-bg: #FFF0F2;
     --mvp-focus: #2857A4;
+
+    /* Shared UI geometry tokens: update common consumers through one source. */
+    --ui-control-height: 48px;
+    --ui-control-radius: 8px;
+    --ui-control-inline-padding: 12px;
+    --ui-field-label-gap: 8px;
+    --ui-form-gap: 18px;
+    --ui-alert-padding: 12px;
+    --ui-alert-radius: 8px;
 }
 
 body {

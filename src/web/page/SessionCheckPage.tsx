@@ -1,4 +1,5 @@
 import React, {FC} from "react";
+import Button from "../component/common/button/Button";
 import style from "./SessionCheckPage.module.css";
 
 interface SessionCheckPageProps {
@@ -27,13 +28,13 @@ const SessionCheckPage: FC<SessionCheckPageProps> = ({
 					: "Сервис временно недоступен. Попробуйте проверить сессию ещё раз.")}
 			</p>
 			<div className={style.actions}>
-				<button type="button" className={style.primaryButton} onClick={onRetry} disabled={loading}>
+				<Button type="button" onClick={onRetry} disabled={loading}>
 					{retryLabel}
-				</button>
+				</Button>
 				{onLogout && (
-					<button type="button" className={style.secondaryButton} onClick={onLogout}>
+					<Button variant="secondary" type="button" onClick={onLogout}>
 						Выйти
-					</button>
+					</Button>
 				)}
 			</div>
 		</section>

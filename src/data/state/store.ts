@@ -3,11 +3,13 @@ import {TypedUseSelectorHook, useDispatch, useSelector} from "react-redux";
 import microserviceReducer from "./microservice/MicroserviceReducer";
 import userTokenReducer from "./user/UserTokenReducer";
 import userReducer from "./user/UserReducer";
+import adminBootstrapReducer from "./user/AdminBootstrapReducer";
 
 const globalReducer = combineReducers({
 	microserviceReducer: microserviceReducer,
 	userTokenReducer: userTokenReducer,
-	userReducer: userReducer
+	userReducer: userReducer,
+	adminBootstrapReducer: adminBootstrapReducer
 });
 
 export const initGlobalStore = () => {

@@ -25,7 +25,13 @@ export const fetchMicroservice = createAsyncThunk<GetMicroserviceV1Response>("mi
 export const microserviceSlice = createSlice({
 	name: "microservice",
 	initialState: initialState,
-	reducers: {},
+	reducers: {
+		markReady: state => {
+			state.loading = false;
+			state.error = undefined;
+			state.service = {readyToUse: true};
+		}
+	},
 	extraReducers: builder => {
 		builder.addCase(fetchMicroservice.pending, state => {
 			state.loading = true;

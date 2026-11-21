@@ -1,0 +1,14 @@
+.form {
+	margin-top: 4px;
+}
+
+.submit {
+	margin-top: 2px;
+}
+
+.fieldError {
+	margin: -14px 0 0;
+	color: var(--mvp-error);
+	font-size: 13px;
+	line-height: 1.4;
+}

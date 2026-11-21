@@ -3,6 +3,8 @@ import PostUserTokenV1Response from "./models/user/PostUserTokenV1Response";
 import PostUserTokenV1Request from "./models/user/PostUserTokenV1Request";
 import GetUserV1Response from "./models/user/GetUserV1Response";
 import {ApiError} from "./ApiError";
+import PostUserV1Request from "./models/user/PostUserV1Request";
+import PostUserV1Response from "./models/user/PostUserV1Response";
 
 class AcademyPortalService {
 	private static instance: AcademyPortalService | null = null;
@@ -19,6 +21,8 @@ class AcademyPortalService {
 	private readonly USER_V1: string = this.USER + this.V1;
 	private readonly USER_TOKEN: string = this.USER + "/token";
 	private readonly USER_TOKEN_V1: string = this.USER_TOKEN + this.V1;
+	private readonly USER_ADMIN: string = this.USER + "/admin";
+	private readonly USER_ADMIN_V1: string = this.USER_ADMIN + this.V1;
 
 	private constructor(host: string) {
 		this.host = host;
@@ -37,14 +41,60 @@ class AcademyPortalService {
 
 	public async getMicroserviceV1(): Promise<GetMicroserviceV1Response> {
 		const url = this.host + this.MICROSERVICE_V1;
-		const response = await fetch(url, {method: "GET"});
-
-		if (!response.ok) {
-			throw new Error("Ошибка получения данных сервиса");
+		let response: Response;
+		try {
+			response = await fetch(url, {method: "GET"});
+		} catch {
+			throw new ApiError("service");
 		}
 
-		const data = await response.json();
-		return data as GetMicroserviceV1Response;
+		if (!response.ok) {
+			throw new ApiError("service", response.status);
+		}
+
+		try {
+			const data: unknown = await response.json();
+			if (!this.isRecord(data) || typeof data.readyToUse !== "boolean") {
+				throw new ApiError("service", response.status);
+			}
+			return {readyToUse: data.readyToUse};
+		} catch {
+			throw new ApiError("service", response.status);
+		}
+	}
+
+	public async postUserV1(request: PostUserV1Request): Promise<PostUserV1Response> {
+		const url = this.host + this.USER_ADMIN_V1;
+		let response: Response;
+		try {
+			response = await fetch(url, {
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify(request)
+			});
+		} catch {
+			throw new ApiError("service");
+		}
+
+		if (response.status === 404 || response.status === 400 || response.status === 409) {
+			throw new ApiError("request", response.status);
+		}
+		if (!response.ok) {
+			throw new ApiError("service", response.status);
+		}
+		if (response.status !== 201) {
+			throw new ApiError("service", response.status);
+		}
+
+		try {
+			const data: unknown = await response.json();
+			if (!this.isRecord(data) || typeof data.id !== "number" || !Number.isSafeInteger(data.id)) {
+				throw new ApiError("service", response.status);
+			}
+			return {id: data.id};
+		} catch {
+			throw new ApiError("service", response.status);
+		}
 	}
 
 	public async getUserV1(): Promise<GetUserV1Response> {

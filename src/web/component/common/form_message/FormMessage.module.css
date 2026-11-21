@@ -1,0 +1,20 @@
+.message {
+	margin: 0 0 20px;
+	padding: var(--ui-alert-padding);
+	border: 1px solid;
+	border-radius: var(--ui-alert-radius);
+	font-size: 14px;
+	line-height: 1.45;
+}
+
+.error {
+	border-color: var(--mvp-error-border);
+	background: var(--mvp-error-bg);
+	color: var(--mvp-error);
+}
+
+.notice {
+	border-color: var(--mvp-border);
+	background: var(--mvp-canvas);
+	color: var(--mvp-text);
+}

@@ -1,4 +1,4 @@
-import {createAsyncThunk, createSlice} from "@reduxjs/toolkit";
+import {createAction, createAsyncThunk, createSlice, ThunkAction, UnknownAction} from "@reduxjs/toolkit";
 import AcademyPortalService from "../../../api/AcademyPortalService";
 import {ApiErrorKind, ApiFailure, toApiFailure} from "../../../api/ApiError";
 import PostUserTokenV1Request from "../../../api/models/user/PostUserTokenV1Request";
@@ -19,29 +19,42 @@ const initialState: UserTokenState = {
 };
 
 const service = AcademyPortalService.getInstance();
+const tokenPending = createAction("user/token/pending");
+const tokenFulfilled = createAction<string>("user/token/fulfilled");
+const tokenRejected = createAction<ApiFailure>("user/token/rejected");
 
-export const fetchUserToken = createAsyncThunk<PostUserTokenV1Response, PostUserTokenV1Request, {
-	rejectValue: ApiFailure;
-	state: {userTokenReducer: UserTokenState}
-}>(
-	"user/token",
-	async (request, {rejectWithValue, getState}) => {
-		const sessionVersion = getState().userTokenReducer.sessionVersion;
-		try {
-			const response = await service.postUserTokenV1(request);
-			if (getState().userTokenReducer.sessionVersion !== sessionVersion) {
-				return rejectWithValue({kind: "superseded"});
-			}
-			localStorage.setItem("token", response.token);
-			return response;
-		} catch (error) {
-			if (getState().userTokenReducer.sessionVersion !== sessionVersion) {
-				return rejectWithValue({kind: "superseded"});
-			}
-			return rejectWithValue(toApiFailure(error));
+interface TokenThunkResult {
+	unwrap: () => Promise<PostUserTokenV1Response>;
+}
+
+export const fetchUserToken = (request: PostUserTokenV1Request): ThunkAction<
+	TokenThunkResult,
+	{userTokenReducer: UserTokenState},
+	unknown,
+	UnknownAction
+> => (dispatch, getState) => {
+	const initialSessionVersion = getState().userTokenReducer.sessionVersion;
+	dispatch(tokenPending());
+	const promise = service.postUserTokenV1(request).then(response => {
+		if (getState().userTokenReducer.sessionVersion !== initialSessionVersion + 1) {
+			dispatch(tokenRejected({kind: "superseded"}));
+			throw Object.assign(new Error("superseded"), {kind: "superseded" as const});
 		}
-	}
-);
+		try {
+			localStorage.setItem("token", response.token);
+		} catch {
+			// Keep the token in Redux even when browser storage is unavailable.
+		}
+		dispatch(tokenFulfilled(response.token));
+		return response;
+	}).catch(error => {
+		if (error && typeof error === "object" && "kind" in error && error.kind === "superseded") throw error;
+		const failure = toApiFailure(error);
+		dispatch(tokenRejected(failure));
+		throw failure;
+	});
+	return {unwrap: () => promise};
+};
 
 export const logoutUser = createAsyncThunk("user/logout", async () => {
 	try {
@@ -56,17 +69,17 @@ export const userTokenSlice = createSlice({
 	initialState,
 	reducers: {},
 	extraReducers: builder => {
-		builder.addCase(fetchUserToken.pending, state => {
+		builder.addCase(tokenPending, state => {
 			state.loading = true;
 			state.sessionVersion += 1;
 			state.errorKind = undefined;
 		});
-		builder.addCase(fetchUserToken.fulfilled, (state, action) => {
+		builder.addCase(tokenFulfilled, (state, action) => {
 			state.loading = false;
-			state.token = action.payload.token;
+			state.token = action.payload;
 			state.errorKind = undefined;
 		});
-		builder.addCase(fetchUserToken.rejected, (state, action) => {
+		builder.addCase(tokenRejected, (state, action) => {
 			state.loading = false;
 			state.errorKind = action.payload?.kind ?? "service";
 		});

@@ -9,6 +9,7 @@ import {useGlobalDispatch, useGlobalSelector} from "../data/state/store";
 import HomePage from "./page/HomePage";
 import LoginPage from "./page/LoginPage";
 import SessionCheckPage from "./page/SessionCheckPage";
+import AdminBootstrapPage from "./page/AdminBootstrapPage";
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -17,6 +18,7 @@ const Application: FC = () => {
 	const microserviceState = useGlobalSelector(state => state.microserviceReducer);
 	const initialToken = useRef(tokenState.token);
 	const restoreStarted = useRef(false);
+	const previousToken = useRef(tokenState.token);
 
 	useEffect(() => {
 		if (!restoreStarted.current) {
@@ -26,15 +28,17 @@ const Application: FC = () => {
 		}
 	}, [dispatch]);
 
-	const isWorkspaceReady = microserviceState.service?.readyToUse === true;
+	useEffect(() => {
+		if (previousToken.current !== null && tokenState.token === null) {
+			dispatch(fetchMicroservice());
+		}
+		previousToken.current = tokenState.token;
+	}, [dispatch, tokenState.token]);
+
 	const hasAdminIdentity = tokenState.token !== null && userState.user?.role === "admin";
-	const isAdmin = isWorkspaceReady && hasAdminIdentity;
+	const isAdmin = hasAdminIdentity;
 	const isRestoring = tokenState.token !== null && !userState.user &&
 		(userState.loading || (!userState.loading && !userState.errorKind));
-
-	if (microserviceState.loading) {
-		return <div role="status" aria-live="polite">Проверяем готовность сервиса…</div>;
-	}
 
 	if (isRestoring) {
 		return <SessionCheckPage loading onRetry={() => dispatch(fetchUser())} onLogout={() => dispatch(logoutUser())}/>;
@@ -44,24 +48,26 @@ const Application: FC = () => {
 		return <SessionCheckPage onRetry={() => dispatch(fetchUser())} onLogout={() => dispatch(logoutUser())}/>;
 	}
 
-	if (hasAdminIdentity && microserviceState.error) {
-		return <SessionCheckPage
-			title="Не удалось проверить готовность сервиса"
-			message="Сервис временно недоступен. Защищённые данные пока не отображаются."
-			retryLabel="Повторить проверку сервиса"
-			onRetry={() => dispatch(fetchMicroservice())}
-			onLogout={() => dispatch(logoutUser())}
-		/>;
-	}
-
-	if (hasAdminIdentity && !isWorkspaceReady) {
-		return <SessionCheckPage
-			title="Рабочее место пока недоступно"
-			message="Сервис ещё не готов. Административные данные не отображаются."
-			retryLabel="Повторить проверку сервиса"
-			onRetry={() => dispatch(fetchMicroservice())}
-			onLogout={() => dispatch(logoutUser())}
-		/>;
+	if (!hasAdminIdentity && tokenState.token === null) {
+		if (microserviceState.loading) {
+			return <SessionCheckPage
+				loading
+				title="Проверяем состояние сервиса…"
+				message="Проверяем, завершена ли первоначальная настройка."
+				onRetry={() => dispatch(fetchMicroservice())}
+			/>;
+		}
+		if (microserviceState.error || !microserviceState.service) {
+			return <SessionCheckPage
+				title="Не удалось проверить состояние сервиса"
+				message="Не получилось определить, завершена ли первичная настройка. Повторите проверку."
+				retryLabel="Повторить проверку"
+				onRetry={() => dispatch(fetchMicroservice())}
+			/>;
+		}
+		if (microserviceState.service.readyToUse === false) {
+			return <AdminBootstrapPage/>;
+		}
 	}
 
 	const renderContentRoutes = () => (
