@@ -10,6 +10,7 @@ import HomePage from "./page/HomePage";
 import LoginPage from "./page/LoginPage";
 import SessionCheckPage from "./page/SessionCheckPage";
 import AdminBootstrapPage from "./page/AdminBootstrapPage";
+import SectionPlaceholder from "./page/SectionPlaceholder";
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -72,14 +73,13 @@ const Application: FC = () => {
 
 	const renderContentRoutes = () => (
 		<Route path="/" element={isAdmin ? <HomePage/> : <Navigate to="/login" replace/>}>
-			<Route index element={"Dashboard"}/>
-			<Route path="calendar" element={"Календарь"}/>
-			<Route path="groups" element={"Группы"}/>
-			<Route path="couches" element={"Тренеры"}/>
-			<Route path="athletes" element={"Спортсмены"}/>
-			<Route path="gyms" element={"Спортзалы"}/>
-			<Route path="events" element={"События"}/>
-			<Route path="*" element={<Navigate to="/" replace/>}/>
+			<Route index element={<SectionPlaceholder title="Сегодня" today/>}/>
+			<Route path="calendar" element={<SectionPlaceholder title="Тренировки"/>}/>
+			<Route path="payments" element={<SectionPlaceholder title="Оплата"/>}/>
+			<Route path="groups" element={<SectionPlaceholder title="Группы"/>}/>
+			<Route path="couches" element={<SectionPlaceholder title="Тренеры"/>}/>
+			<Route path="athletes" element={<SectionPlaceholder title="Спортсмены"/>}/>
+			<Route path="*" element={<SectionPlaceholder notFound/>}/>
 		</Route>
 	);
 

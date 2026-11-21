@@ -1,54 +1,84 @@
-.content {
-    margin-bottom: 40px;
+.desktopMenu,
+.mobileMenu {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
 }
 
-.content nav {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 40px;
+.desktopMenu nav,
+.mobileMenu nav {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 
-.content a {
-    flex: 1;
-
-    display: flex;
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: var(--color-black);
-    text-decoration: none;
-
-    margin-bottom: 16px;
+.desktopMenu a,
+.mobileMenu a {
+	box-sizing: border-box;
+	min-height: var(--ui-control-height);
+	padding: 0 12px;
+	display: flex;
+	align-items: center;
+	border-radius: 10px;
+	color: var(--mvp-text);
+	text-decoration: none;
 }
 
-.content a:hover {
-    background: var(--color-brown-light-hover);
+.desktopMenu a:hover,
+.mobileMenu a:hover { background: var(--mvp-canvas); }
+
+.desktopMenu a:focus-visible,
+.mobileMenu a:focus-visible {
+	outline: 3px solid var(--mvp-focus);
+	outline-offset: 2px;
 }
 
-.content a:active {
-    background: var(--color-brown-light-active);
+.desktopMenu a[aria-current="page"],
+.mobileMenu a[aria-current="page"] {
+	background: var(--mvp-primary);
+	color: var(--mvp-surface);
 }
 
-.content nav > a:last-child {
-    margin-bottom: 0;
+.item {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 4px;
 }
 
-.active {
-    background: var(--color-brown-light);
+.item img {
+	flex: 0 0 24px;
+	width: 24px;
+	height: 24px;
+	object-fit: contain;
+	filter: invert(31%) sepia(7%) saturate(450%) hue-rotate(253deg) brightness(93%) contrast(86%);
 }
 
-.content .active:hover {
-    background: var(--color-brown-light);
+.item > span:first-of-type { flex: 1; }
+
+.status {
+	flex: 0 0 auto;
+	color: var(--mvp-muted);
+	font-size: 12px;
+	line-height: 16px;
 }
 
-.content .active:active {
-    background: var(--color-brown-light-active);
+.active .status { color: var(--mvp-surface); }
+
+.active .item img { filter: brightness(0) invert(1); }
+
+.logout {
+	margin-top: auto;
+	border-top: 1px solid var(--mvp-border);
+	border-radius: 0 !important;
 }
 
-.block {
-    display: flex;
-    align-items: center;
-}
+.mobileMenu { flex: 1; min-height: 0; }
 
-.block img {
-    margin-right: 9px;
+.mobileMenu nav { gap: 8px; }
+
+.mobileMenu .logout { margin-top: auto; }
+
+@media (max-width: 767px) {
+	.desktopMenu { display: none; }
 }
