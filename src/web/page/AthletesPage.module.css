@@ -1,0 +1,105 @@
+.page {
+	width: min(100%, 920px);
+	margin: 0 auto;
+	color: var(--mvp-text);
+}
+
+.header, .formHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 24px;
+	margin-bottom: 24px;
+}
+
+.header h1, .formHeader h1 {
+	margin: 0;
+	font-size: 28px;
+	line-height: 36px;
+}
+
+.header p, .formHeader p {
+	margin: 8px 0 0;
+	color: var(--mvp-muted);
+	line-height: 24px;
+}
+
+.addLink, .backLink, .inlineLink {
+	color: var(--mvp-primary);
+	font-weight: 700;
+}
+
+.addLink {
+	box-sizing: border-box;
+	min-height: var(--ui-control-height);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 16px;
+	border-radius: var(--ui-control-radius);
+	background: var(--mvp-primary);
+	color: var(--color-white);
+	text-decoration: none;
+}
+
+.addLink:focus-visible, .backLink:focus-visible, .cancel:focus-visible, .inlineLink:focus-visible {
+	outline: 3px solid var(--mvp-focus);
+	outline-offset: 2px;
+}
+
+.state, .empty, .statePanel, .formCard {
+	box-sizing: border-box;
+	border: 1px solid var(--mvp-border);
+	border-radius: 12px;
+	background: var(--mvp-surface);
+}
+
+.state { padding: 24px; }
+.empty { padding: 28px; }
+.empty h2 { margin: 0 0 8px; font-size: 20px; }
+.empty p { margin: 0; line-height: 24px; color: var(--mvp-muted); }
+.statePanel { max-width: 620px; padding: 24px; }
+.statePanel button { margin-top: 16px; }
+.inlineLink { display: inline-block; }
+
+.tableWrap { overflow-x: auto; border: 1px solid var(--mvp-border); border-radius: 12px; background: var(--mvp-surface); }
+.table { width: 100%; border-collapse: collapse; text-align: left; }
+.table th, .table td { padding: 16px; border-bottom: 1px solid var(--mvp-border); vertical-align: middle; }
+.table th { color: var(--mvp-muted); font-size: 14px; font-weight: 600; }
+.table tr:last-child td { border-bottom: 0; }
+.active { color: #315b3a; }
+
+.formHeader { display: block; margin-bottom: 24px; }
+.backLink { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; line-height: 1; text-decoration: none; }
+.backArrow { display: block; flex: 0 0 20px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.formCard { padding: 32px; }
+.group { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; }
+.parentGroup { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--mvp-border); }
+.nameFields, .contactFields { display: flex; min-width: 0; flex-direction: column; gap: var(--ui-form-gap); }
+.contactFields { padding-top: 46px; }
+.nameFields h2 { margin: 0; font-size: 20px; line-height: 28px; }
+.fieldWrap { min-width: 0; }
+.fieldError { margin: 6px 0 0; color: var(--mvp-error); font-size: 14px; line-height: 20px; }
+.actions { display: flex; align-items: center; justify-content: flex-end; gap: 24px; margin-top: 32px; }
+.cancel { color: var(--mvp-muted); font-weight: 600; }
+
+@media (max-width: 767px) {
+	.header { flex-direction: column; gap: 16px; }
+	.header h1, .formHeader h1 { font-size: 24px; line-height: 32px; }
+	.addLink { width: 100%; }
+	.tableWrap { overflow: visible; border: 0; background: transparent; }
+	.table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+	.table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+	.table tr { box-sizing: border-box; margin-bottom: 12px; padding: 8px 16px; border: 1px solid var(--mvp-border); border-radius: 12px; background: var(--mvp-surface); }
+	.table td { box-sizing: border-box; display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--mvp-border); text-align: right; }
+	.table td::before { content: attr(data-label); flex: 0 0 42%; color: var(--mvp-muted); text-align: left; font-size: 14px; }
+	.table tr:last-child td { border-bottom: 1px solid var(--mvp-border); }
+	.table tr td:last-child { border-bottom: 0; }
+	.formCard { padding: 20px 16px; }
+	.group { grid-template-columns: minmax(0, 1fr); gap: var(--ui-form-gap); }
+	.parentGroup { margin-top: 24px; padding-top: 24px; }
+	.nameFields, .contactFields { gap: var(--ui-form-gap); }
+	.contactFields { padding-top: 0; }
+	.actions { flex-direction: column-reverse; align-items: stretch; gap: 16px; margin-top: 28px; }
+	.cancel { text-align: center; }
+}

@@ -18,6 +18,9 @@
     --mvp-error-border: #A34754;
     --mvp-error-bg: #FFF0F2;
     --mvp-focus: #2857A4;
+    --mvp-field-hover-ring: rgba(76, 63, 79, 0.14);
+    --mvp-field-focus-ring: rgba(76, 63, 79, 0.26);
+    --mvp-field-error-ring: rgba(140, 47, 62, 0.22);
 
     /* Shared UI geometry tokens: update common consumers through one source. */
     --ui-control-height: 48px;

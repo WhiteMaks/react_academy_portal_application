@@ -5,6 +5,10 @@ import GetUserV1Response from "./models/user/GetUserV1Response";
 import {ApiError} from "./ApiError";
 import PostUserV1Request from "./models/user/PostUserV1Request";
 import PostUserV1Response from "./models/user/PostUserV1Response";
+import GetAthletesV1Response from "./models/athlete/GetAthletesV1Response";
+import AthleteV1Response from "./models/athlete/AthleteV1Response";
+import PostAthleteV1Request from "./models/athlete/PostAthleteV1Request";
+import {formatBirthDateWire, parseBirthDateWire} from "./models/athlete/birthDate";
 
 class AcademyPortalService {
 	private static instance: AcademyPortalService | null = null;
@@ -23,6 +27,8 @@ class AcademyPortalService {
 	private readonly USER_TOKEN_V1: string = this.USER_TOKEN + this.V1;
 	private readonly USER_ADMIN: string = this.USER + "/admin";
 	private readonly USER_ADMIN_V1: string = this.USER_ADMIN + this.V1;
+	private readonly ATHLETE: string = this.API + "/athlete";
+	private readonly ATHLETE_V1: string = this.ATHLETE + this.V1;
 
 	private constructor(host: string) {
 		this.host = host;
@@ -124,6 +130,47 @@ class AcademyPortalService {
 		}
 	}
 
+	public async getAthletesV1(): Promise<GetAthletesV1Response> {
+		const response = await this.fetchAthletes("GET");
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+
+		try {
+			const data: unknown = await response.json();
+			if (!this.isRecord(data) || !Array.isArray(data.athletes)) {
+				throw new ApiError("service", response.status);
+			}
+			const athletes: AthleteV1Response[] = [];
+			for (const item of data.athletes) {
+				const athlete = this.parseAthleteResponse(item);
+				if (!athlete) throw new ApiError("service", response.status);
+				athletes.push(athlete);
+			}
+			return {athletes};
+		} catch {
+			throw new ApiError("service", response.status);
+		}
+	}
+
+	public async postAthleteV1(request: PostAthleteV1Request): Promise<AthleteV1Response> {
+		const response = await this.fetchAthletes("POST", request);
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 400) throw new ApiError("request", response.status);
+		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+		if (response.status !== 201) throw new ApiError("service", response.status);
+
+		try {
+			const data: unknown = await response.json();
+			const athlete = this.parseAthleteResponse(data);
+			if (!athlete) throw new ApiError("service", response.status);
+			return athlete;
+		} catch {
+			throw new ApiError("service", response.status);
+		}
+	}
+
 	public async postUserTokenV1(request: PostUserTokenV1Request): Promise<PostUserTokenV1Response> {
 		const url = this.host + this.USER_TOKEN_V1;
 		let response: Response;
@@ -155,9 +202,28 @@ class AcademyPortalService {
 		}
 	}
 
-	private generateHeaders(): HeadersInit {
+	private generateHeaders(): Record<string, string> {
 		const token = localStorage.getItem("token");
 		return token ? {"Authorization": `Bearer ${token}`} : {};
+	}
+
+	private async fetchAthletes(method: "GET" | "POST", request?: PostAthleteV1Request): Promise<Response> {
+		const url = this.host + this.ATHLETE_V1;
+		let body: string | undefined;
+		if (request) {
+			const birthDate = formatBirthDateWire(request.birthDate);
+			if (!birthDate) throw new ApiError("request");
+			body = JSON.stringify({...request, birthDate});
+		}
+		try {
+			return await fetch(url, {
+				method,
+				headers: request ? {...this.generateHeaders(), "Content-Type": "application/json"} : this.generateHeaders(),
+				...(body ? {body} : {})
+			});
+		} catch {
+			throw new ApiError("service");
+		}
 	}
 
 	private isRecord(value: unknown): value is Record<string, unknown> {
@@ -171,6 +237,28 @@ class AcademyPortalService {
 
 	private isTokenResponse(value: unknown): value is PostUserTokenV1Response {
 		return this.isRecord(value) && typeof value.token === "string" && value.token.length > 0;
+	}
+
+	private isNullableString(value: unknown): value is string | null {
+		return value === null || typeof value === "string";
+	}
+
+	private parseAthleteResponse(value: unknown): AthleteV1Response | null {
+		if (!this.isRecord(value) || typeof value.id !== "string" || !/^\d+$/.test(value.id) ||
+			typeof value.secondName !== "string" || typeof value.firstName !== "string" ||
+			!this.isNullableString(value.middleName) || !this.isNullableString(value.photoUrl) ||
+			!this.isNullableString(value.phone) || !this.isNullableString(value.parentSecondName) ||
+			!this.isNullableString(value.parentFirstName) || !this.isNullableString(value.parentMiddleName) ||
+			!this.isNullableString(value.parentPhone) || typeof value.isActive !== "boolean") return null;
+
+		const birthDate = parseBirthDateWire(value.birthDate);
+		if (!birthDate) return null;
+		return {
+			id: value.id, secondName: value.secondName, firstName: value.firstName,
+			middleName: value.middleName, birthDate, photoUrl: value.photoUrl, phone: value.phone,
+			parentSecondName: value.parentSecondName, parentFirstName: value.parentFirstName,
+			parentMiddleName: value.parentMiddleName, parentPhone: value.parentPhone, isActive: value.isActive
+		};
 	}
 }
 

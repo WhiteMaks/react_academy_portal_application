@@ -11,6 +11,8 @@ import LoginPage from "./page/LoginPage";
 import SessionCheckPage from "./page/SessionCheckPage";
 import AdminBootstrapPage from "./page/AdminBootstrapPage";
 import SectionPlaceholder from "./page/SectionPlaceholder";
+import AthletesPage from "./page/AthletesPage";
+import AthleteCreatePage from "./page/AthleteCreatePage";
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -78,7 +80,8 @@ const Application: FC = () => {
 			<Route path="payments" element={<SectionPlaceholder title="Оплата"/>}/>
 			<Route path="groups" element={<SectionPlaceholder title="Группы"/>}/>
 			<Route path="couches" element={<SectionPlaceholder title="Тренеры"/>}/>
-			<Route path="athletes" element={<SectionPlaceholder title="Спортсмены"/>}/>
+			<Route path="athletes" element={<AthletesPage/>}/>
+			<Route path="athletes/new" element={<AthleteCreatePage/>}/>
 			<Route path="*" element={<SectionPlaceholder notFound/>}/>
 		</Route>
 	);

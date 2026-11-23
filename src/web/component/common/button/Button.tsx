@@ -26,7 +26,7 @@ const Button: FC<ButtonProps> = ({
 			className ?? ""
 		].filter(Boolean).join(" ")}
 	>
-		{children}
+		<span className={style.content}>{children}</span>
 	</button>
 );
 

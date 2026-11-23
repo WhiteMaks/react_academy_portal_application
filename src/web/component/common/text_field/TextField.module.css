@@ -25,6 +25,7 @@
 	color: var(--mvp-text);
 	font: inherit;
 	line-height: 19px;
+	transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .control::placeholder {
@@ -32,11 +33,37 @@
 	opacity: 1;
 }
 
+.control:hover:not(:disabled):not([aria-invalid="true"]) {
+	border-color: var(--mvp-primary);
+	box-shadow: 0 0 0 2px var(--mvp-field-hover-ring);
+}
+
 .control[aria-invalid="true"] {
 	border-color: var(--mvp-error-border);
+}
+
+.control:focus {
+	border-color: var(--mvp-primary);
+	outline: none;
+	box-shadow: 0 0 0 4px var(--mvp-field-focus-ring);
 }
 
 .control:focus-visible {
 	outline: 3px solid var(--mvp-focus);
 	outline-offset: 2px;
+	box-shadow: none;
+}
+
+.control[aria-invalid="true"]:hover,
+.control[aria-invalid="true"]:focus {
+	border-color: var(--mvp-error-border);
+}
+
+.control[aria-invalid="true"]:focus {
+	box-shadow: 0 0 0 4px var(--mvp-field-error-ring);
+}
+
+.control[aria-invalid="true"]:focus-visible {
+	outline-color: var(--mvp-error-border);
+	box-shadow: none;
 }
