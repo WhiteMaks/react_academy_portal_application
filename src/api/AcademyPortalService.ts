@@ -131,7 +131,7 @@ class AcademyPortalService {
 		}
 	}
 
-	public async getAthletesV1(options: {status: "active" | "archived"; q?: string; limit: number; offset: number} = {status: "active", limit: 50, offset: 0}): Promise<GetAthletesV1Response> {
+	public async getAthletesV1(options: {status: "active" | "archived"; q?: string; limit: number; offset: number; isCoach?: boolean} = {status: "active", limit: 50, offset: 0}): Promise<GetAthletesV1Response> {
 		const response = await this.fetchAthletes("GET", undefined, options);
 		if (response.status === 401) throw new ApiError("unauthorized", response.status);
 		if (response.status === 403) throw new ApiError("forbidden", response.status);
@@ -152,6 +152,20 @@ class AcademyPortalService {
 		} catch {
 			throw new ApiError("service", response.status);
 		}
+	}
+
+	public async setAthleteCoachV1(id: string, isCoach: boolean): Promise<AthleteV1Response> {
+		if (!/^[1-9]\d*$/.test(id)) throw new ApiError("request");
+		const url = this.host + this.ATHLETE + "/" + id + "/coach" + this.V1;
+		let response: Response;
+		try { response = await fetch(url, {method: "PUT", headers: {...this.generateHeaders(), "Content-Type": "application/json"}, body: JSON.stringify({isCoach})}); }
+		catch { throw new ApiError("service"); }
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+		try { const athlete = this.parseAthleteResponse(await response.json()); if (!athlete || athlete.id !== id || athlete.isCoach !== isCoach) throw new ApiError("service", response.status); return athlete; }
+		catch { throw new ApiError("service", response.status); }
 	}
 
 	public async postAthleteV1(request: PostAthleteV1Request): Promise<AthleteV1Response> {
@@ -261,9 +275,9 @@ class AcademyPortalService {
 		return token ? {"Authorization": `Bearer ${token}`} : {};
 	}
 
-	private async fetchAthletes(method: "GET" | "POST", request?: PostAthleteV1Request, options?: {status: "active" | "archived"; q?: string; limit: number; offset: number}): Promise<Response> {
+	private async fetchAthletes(method: "GET" | "POST", request?: PostAthleteV1Request, options?: {status: "active" | "archived"; q?: string; limit: number; offset: number; isCoach?: boolean}): Promise<Response> {
 		const query = new URLSearchParams();
-		if (method === "GET" && options) { query.set("status", options.status); if (options.q) query.set("q", options.q); query.set("limit", String(options.limit)); query.set("offset", String(options.offset)); }
+		if (method === "GET" && options) { query.set("status", options.status); if (options.q) query.set("q", options.q); if (options.isCoach !== undefined) query.set("isCoach", String(options.isCoach)); query.set("limit", String(options.limit)); query.set("offset", String(options.offset)); }
 		const url = this.host + this.ATHLETE_V1 + (query.size ? `?${query.toString()}` : "");
 		let body: string | undefined;
 		if (request) {
@@ -328,16 +342,15 @@ class AcademyPortalService {
 			!this.isNullableString(value.middleName) || !this.isNullableString(value.photoUrl) ||
 			!this.isNullableString(value.phone) || !this.isNullableString(value.parentSecondName) ||
 			!this.isNullableString(value.parentFirstName) || !this.isNullableString(value.parentMiddleName) ||
-			!this.isNullableString(value.parentPhone) || typeof value.isActive !== "boolean" ||
+			!this.isNullableString(value.parentPhone) || typeof value.isActive !== "boolean" || typeof value.isCoach !== "boolean" ||
 			!this.isUpdatedAt(value.updatedAt)) return null;
 
-		const birthDate = parseBirthDateWire(value.birthDate);
-		if (!birthDate) return null;
+		if (!parseBirthDateWire(value.birthDate)) return null;
 		return {
 			id: value.id, secondName: value.secondName, firstName: value.firstName,
-			middleName: value.middleName, birthDate, photoUrl: value.photoUrl, phone: value.phone,
+			middleName: value.middleName, birthDate: value.birthDate as string, photoUrl: value.photoUrl, phone: value.phone,
 			parentSecondName: value.parentSecondName, parentFirstName: value.parentFirstName,
-			parentMiddleName: value.parentMiddleName, parentPhone: value.parentPhone, isActive: value.isActive,
+			parentMiddleName: value.parentMiddleName, parentPhone: value.parentPhone, isActive: value.isActive, isCoach: value.isCoach,
 			updatedAt: value.updatedAt
 		};
 	}

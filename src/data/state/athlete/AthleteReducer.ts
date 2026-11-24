@@ -6,15 +6,9 @@ import PostAthleteV1Request from "../../../api/models/athlete/PostAthleteV1Reque
 import PutAthleteV1Request from "../../../api/models/athlete/PutAthleteV1Request";
 
 interface AthleteState {
-	athletes: AthleteV1Response[];
-	total: number;
-	listStatus: "active" | "archived";
-	listQuery: string;
-	listOffset: number;
-	loading: boolean;
+	catalogs: Record<"athletes" | "coaches", Record<"active" | "archived", AthleteCatalogState>>;
+	selectedStatus: Record<"athletes" | "coaches", "active" | "archived">;
 	saving: boolean;
-	loaded: boolean;
-	listErrorKind?: ApiFailure["kind"];
 	createErrorKind?: ApiFailure["kind"];
 	profile: AthleteV1Response | null;
 	profileId: string | null;
@@ -23,7 +17,6 @@ interface AthleteState {
 	profileSaving: boolean;
 	profileErrorKind?: ApiFailure["kind"];
 	profileSaveErrorKind?: ApiFailure["kind"];
-	activeListRequestId?: string;
 	activeCreateRequestId?: string;
 	activeCreateSessionVersion?: number;
 	activeProfileRequestId?: string;
@@ -32,6 +25,17 @@ interface AthleteState {
 	activeProfileSaveRequestId?: string;
 	activeProfileSaveId?: string;
 	activeProfileSaveSessionVersion?: number;
+}
+
+interface AthleteCatalogState {
+	athletes: AthleteV1Response[];
+	total: number;
+	query: string;
+	offset: number;
+	loading: boolean;
+	loaded: boolean;
+	errorKind?: ApiFailure["kind"];
+	activeRequestId?: string;
 }
 
 interface SessionState {
@@ -55,29 +59,35 @@ interface ProfileRequestArgs {
 }
 
 interface ArchiveArgs extends ProfileRequestArgs {archived: boolean;}
+interface CoachStatusArgs extends ProfileRequestArgs {isCoach: boolean;}
 
 interface UpdateProfileArgs extends ProfileRequestArgs {
 	request: PutAthleteV1Request;
 }
 
+const createCatalogState = (): AthleteCatalogState => ({athletes: [], total: 0, query: "", offset: 0, loading: false, loaded: false});
+const createCatalogs = (): AthleteState["catalogs"] => ({
+	athletes: {active: createCatalogState(), archived: createCatalogState()},
+	coaches: {active: createCatalogState(), archived: createCatalogState()}
+});
+const directoryFor = (isCoach?: boolean): "athletes" | "coaches" => isCoach ? "coaches" : "athletes";
+const invalidateCatalogs = (state: AthleteState) => {
+	(Object.values(state.catalogs) as Array<Record<"active" | "archived", AthleteCatalogState>>).forEach(directory => {
+		(Object.values(directory) as AthleteCatalogState[]).forEach(catalog => {
+			catalog.loaded = false;
+			catalog.loading = false;
+			catalog.activeRequestId = undefined;
+			catalog.errorKind = undefined;
+		});
+	});
+};
+
 const initialState: AthleteState = {
-	athletes: [], total: 0, listStatus: "active", listQuery: "", listOffset: 0, loading: false, saving: false, loaded: false,
+	catalogs: createCatalogs(), selectedStatus: {athletes: "active", coaches: "active"}, saving: false,
 	profile: null, profileId: null, profileLoaded: false, profileLoading: false, profileSaving: false
 };
 const service = AcademyPortalService.getInstance();
-export interface AthleteListArgs {status: "active" | "archived"; q?: string; limit?: number; offset?: number;}
-
-const compareId = (left: string, right: string) => {
-	const normalizedLeft = left.replace(/^0+(?=\d)/, "");
-	const normalizedRight = right.replace(/^0+(?=\d)/, "");
-	return normalizedLeft.length - normalizedRight.length || normalizedLeft.localeCompare(normalizedRight);
-};
-
-const sortAthletes = (athletes: AthleteV1Response[]) => athletes.sort((left, right) =>
-	left.secondName.localeCompare(right.secondName, "ru") || left.firstName.localeCompare(right.firstName, "ru") ||
-	(left.middleName === null ? (right.middleName === null ? 0 : 1) : right.middleName === null ? -1 : left.middleName.localeCompare(right.middleName, "ru")) ||
-	compareId(left.id, right.id)
-);
+export interface AthleteListArgs {status: "active" | "archived"; q?: string; limit?: number; offset?: number; isCoach?: boolean;}
 
 export const fetchAthletes = createAsyncThunk<{athletes: AthleteV1Response[]; total: number; args: AthleteListArgs}, AthleteListArgs | void, {
 	rejectValue: ApiFailure;
@@ -87,7 +97,7 @@ export const fetchAthletes = createAsyncThunk<{athletes: AthleteV1Response[]; to
 	if (!token) return rejectWithValue({kind: "unauthorized"});
 	try {
 		const args: AthleteListArgs = input ?? {status: "active", limit: 50, offset: 0};
-		const response = await service.getAthletesV1({status: args.status, q: args.q, limit: args.limit ?? 50, offset: args.offset ?? 0});
+		const response = await service.getAthletesV1({status: args.status, q: args.q, limit: args.limit ?? 50, offset: args.offset ?? 0, isCoach: args.isCoach});
 		const session = getState().userTokenReducer;
 		if (session.token !== token || session.sessionVersion !== sessionVersion) return rejectWithValue({kind: "superseded"});
 		return {athletes: response.athletes, total: response.total, args};
@@ -177,10 +187,21 @@ export const setAthleteArchived = createAsyncThunk<AthleteV1Response, ArchiveArg
  catch (error) { return rejectWithValue(toApiFailure(error)); }
 });
 
+export const setAthleteCoach = createAsyncThunk<AthleteV1Response, CoachStatusArgs, {rejectValue: ApiFailure; state: StateWithSession}>("athlete/coach", async ({id, isCoach, sessionVersion}, {getState, rejectWithValue}) => {
+	const {token, sessionVersion: currentVersion} = getState().userTokenReducer;
+	if (!token) return rejectWithValue({kind: "unauthorized"});
+	if (sessionVersion !== currentVersion) return rejectWithValue({kind: "superseded"});
+	try { const athlete = await service.setAthleteCoachV1(id, isCoach); if (getState().userTokenReducer.sessionVersion !== sessionVersion) return rejectWithValue({kind: "superseded"}); return athlete; }
+	catch (error) { return rejectWithValue(toApiFailure(error)); }
+});
+
 export const athleteSlice = createSlice({
 	name: "athlete",
 	initialState,
 	reducers: {
+		selectAthleteCatalogStatus: (state, action: PayloadAction<{isCoach: boolean; status: "active" | "archived"}>) => {
+			state.selectedStatus[directoryFor(action.payload.isCoach)] = action.payload.status;
+		},
 		clearAthleteProfile: state => {
 			state.profile = null;
 			state.profileId = null;
@@ -190,17 +211,10 @@ export const athleteSlice = createSlice({
 			state.profileSaveErrorKind = undefined;
 		},
 		clearAthleteState: state => {
-			state.athletes = [];
-			state.total = 0;
-			state.listStatus = "active";
-			state.listQuery = "";
-			state.listOffset = 0;
-			state.loading = false;
+			state.catalogs = createCatalogs();
+			state.selectedStatus = {athletes: "active", coaches: "active"};
 			state.saving = false;
-			state.loaded = false;
-			state.listErrorKind = undefined;
 			state.createErrorKind = undefined;
-			state.activeListRequestId = undefined;
 			state.activeCreateRequestId = undefined;
 			state.activeCreateSessionVersion = undefined;
 			state.profile = null;
@@ -221,43 +235,40 @@ export const athleteSlice = createSlice({
 	extraReducers: builder => {
 		builder.addCase(fetchAthletes.pending, (state, action) => {
 			const args = action.meta.arg ?? {status: "active" as const, limit: 50, offset: 0};
-			state.listStatus = args.status;
-			state.listQuery = args.q ?? "";
-			state.listOffset = args.offset ?? 0;
-			state.athletes = [];
-			state.total = 0;
-			state.loading = true;
-			state.listErrorKind = undefined;
-			state.activeListRequestId = action.meta.requestId;
+			const catalog = state.catalogs[directoryFor(args.isCoach)][args.status];
+			catalog.query = args.q ?? "";
+			catalog.offset = args.offset ?? 0;
+			catalog.loading = true;
+			catalog.errorKind = undefined;
+			catalog.activeRequestId = action.meta.requestId;
 		});
 		builder.addCase(fetchAthletes.fulfilled, (state, action) => {
-			if (state.activeListRequestId !== action.meta.requestId) return;
-			state.loading = false;
-			state.loaded = true;
-			state.athletes = action.payload.athletes;
-			state.total = action.payload.total;
-			state.listStatus = action.payload.args.status;
-			state.listQuery = action.payload.args.q ?? "";
-			state.listOffset = action.payload.args.offset ?? 0;
-			state.listErrorKind = undefined;
-			state.activeListRequestId = undefined;
+			const catalog = state.catalogs[directoryFor(action.payload.args.isCoach)][action.payload.args.status];
+			if (catalog.activeRequestId !== action.meta.requestId) return;
+			catalog.loading = false;
+			catalog.loaded = true;
+			catalog.athletes = action.payload.athletes;
+			catalog.total = action.payload.total;
+			catalog.query = action.payload.args.q ?? "";
+			catalog.offset = action.payload.args.offset ?? 0;
+			catalog.errorKind = undefined;
+			catalog.activeRequestId = undefined;
 		});
 		builder.addCase(fetchAthletes.rejected, (state, action) => {
-			if (state.activeListRequestId !== action.meta.requestId) return;
-			state.loading = false;
-			state.listErrorKind = action.payload?.kind === "superseded" ? undefined : action.payload?.kind ?? "service";
-			state.activeListRequestId = undefined;
+			const args = action.meta.arg ?? {status: "active" as const, isCoach: false};
+			const catalog = state.catalogs[directoryFor(args.isCoach)][args.status];
+			if (catalog.activeRequestId !== action.meta.requestId) return;
+			catalog.loading = false;
+			catalog.errorKind = action.payload?.kind === "superseded" ? undefined : action.payload?.kind ?? "service";
+			catalog.activeRequestId = undefined;
 		});
 		builder.addCase(setAthleteArchived.fulfilled, (state, action) => {
 			if (state.profileId === action.payload.id) state.profile = action.payload;
-			const sourceStatus = action.meta.arg.archived ? "active" : "archived";
-			if (state.listStatus === sourceStatus) {
-				state.athletes = state.athletes.filter(item => item.id !== action.payload.id);
-				state.total = Math.max(0, state.total - 1);
-				const pageSize = 50;
-				const lastValidOffset = Math.floor(Math.max(0, state.total - 1) / pageSize) * pageSize;
-				if (state.listOffset > lastValidOffset) state.listOffset = lastValidOffset;
-			}
+			invalidateCatalogs(state);
+		});
+		builder.addCase(setAthleteCoach.fulfilled, (state, action) => {
+			if (state.profileId === action.payload.id) state.profile = action.payload;
+			invalidateCatalogs(state);
 		});
 		builder.addCase(createAthlete.pending, (state, action) => {
 			state.saving = true;
@@ -268,8 +279,7 @@ export const athleteSlice = createSlice({
 		builder.addCase(createAthlete.fulfilled, (state, action) => {
 			if (state.activeCreateRequestId !== action.meta.requestId || state.activeCreateSessionVersion !== action.meta.arg.sessionVersion) return;
 			state.saving = false;
-			state.athletes = sortAthletes([...state.athletes, action.payload]);
-			state.loaded = true;
+			invalidateCatalogs(state);
 			state.createErrorKind = undefined;
 			state.activeCreateRequestId = undefined;
 			state.activeCreateSessionVersion = undefined;
@@ -345,7 +355,7 @@ export const athleteSlice = createSlice({
 			state.profileLoaded = true;
 			state.profileSaving = false;
 			state.profileSaveErrorKind = undefined;
-			state.athletes = state.athletes.map(athlete => athlete.id === action.payload.id ? action.payload : athlete);
+			invalidateCatalogs(state);
 			state.activeProfileSaveRequestId = undefined;
 			state.activeProfileSaveId = undefined;
 			state.activeProfileSaveSessionVersion = undefined;
@@ -361,17 +371,10 @@ export const athleteSlice = createSlice({
 		});
 		builder.addMatcher((action): action is PayloadAction =>
 			["user/logout/pending", "user/logout/fulfilled", "user/token/pending", "user/token/fulfilled"].includes(action.type), state => {
-			state.athletes = [];
-			state.total = 0;
-			state.listStatus = "active";
-			state.listQuery = "";
-			state.listOffset = 0;
-			state.loading = false;
+			state.catalogs = createCatalogs();
+			state.selectedStatus = {athletes: "active", coaches: "active"};
 			state.saving = false;
-			state.loaded = false;
-			state.listErrorKind = undefined;
 			state.createErrorKind = undefined;
-			state.activeListRequestId = undefined;
 			state.activeCreateRequestId = undefined;
 			state.activeCreateSessionVersion = undefined;
 			state.profile = null;

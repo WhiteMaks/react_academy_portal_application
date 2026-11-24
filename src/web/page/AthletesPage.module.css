@@ -160,6 +160,7 @@
 .profileGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 340px)); column-gap: 80px; row-gap: 60px; margin: 0; }
 .profileGrid dt { margin-bottom: 6px; color: var(--mvp-muted); font-size: 14px; }
 .profileGrid dd { margin: 0; line-height: 24px; overflow-wrap: anywhere; }
+.coachStatus small { display: block; margin-top: 6px; color: var(--mvp-muted); font-size: 14px; line-height: 20px; }
 .profileActions { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top: 32px; }
 .profileActions a, .profileActions button { box-sizing:border-box; width: min(340px, 100%); min-height: 48px; }
 .confirmOverlay { position: fixed; z-index: 1000; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--mvp-canvas); }

@@ -28,7 +28,7 @@ const routes: MenuRoute[] = [
 	{path: "/calendar", value: "Тренировки", svg: svg_calendar, end: true},
 	{path: "/payments", value: "Оплата", svg: svg_card, end: true},
 	{path: "/groups", value: "Группы", svg: svg_group, end: true},
-	{path: "/couches", value: "Тренеры", svg: svg_couch, end: true},
+	{path: "/coaches", value: "Тренеры", svg: svg_couch, end: true},
 	{path: "/athletes", value: "Спортсмены", svg: svg_athlete, end: false},
 ];
 
@@ -46,7 +46,7 @@ const Menu: FC<MenuProps> = ({variant = "desktop", onNavigate}) => (
 					<Block className={style.item}>
 						<SvgIcon description="" iconPath={route.svg}/>
 						<span>{route.value}</span>
-						{route.path !== "/" && route.path !== "/athletes" && <span className={style.status}>Скоро</span>}
+						{route.path !== "/" && route.path !== "/athletes" && route.path !== "/coaches" && <span className={style.status}>Скоро</span>}
 					</Block>
 				</NavLink>
 			))}

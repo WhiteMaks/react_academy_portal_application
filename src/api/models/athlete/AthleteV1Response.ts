@@ -3,7 +3,8 @@ export interface AthleteV1Response {
 	secondName: string;
 	firstName: string;
 	middleName: string | null;
-	birthDate: Date;
+	// Keep API responses Redux-serializable; requests still use Date values.
+	birthDate: string;
 	photoUrl: string | null;
 	phone: string | null;
 	parentSecondName: string | null;
@@ -11,6 +12,7 @@ export interface AthleteV1Response {
 	parentMiddleName: string | null;
 	parentPhone: string | null;
 	isActive: boolean;
+	isCoach: boolean;
 	updatedAt: string;
 }
 

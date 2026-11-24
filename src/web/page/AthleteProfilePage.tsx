@@ -1,10 +1,10 @@
 import React, {ChangeEvent, FC, FormEvent, useEffect, useMemo, useRef, useState} from "react";
-import {Link, useBlocker, useNavigate, useParams} from "react-router-dom";
+import {Link, useBlocker, useLocation, useNavigate, useParams} from "react-router-dom";
 import {createPortal} from "react-dom";
 import AthleteV1Response from "../../api/models/athlete/AthleteV1Response";
 import PutAthleteV1Request from "../../api/models/athlete/PutAthleteV1Request";
 import {formatBirthDateDmy, formatBirthDateDisplayInput, parseBirthDateDisplayInput} from "../../api/models/athlete/birthDate";
-import {athleteActions, fetchAthlete, fetchAthletes, setAthleteArchived, updateAthlete} from "../../data/state/athlete/AthleteReducer";
+import {athleteActions, fetchAthlete, fetchAthletes, setAthleteArchived, setAthleteCoach, updateAthlete} from "../../data/state/athlete/AthleteReducer";
 import {useGlobalDispatch, useGlobalSelector} from "../../data/state/store";
 import AthleteStatusBadge from "../component/athlete_status_badge/AthleteStatusBadge";
 import Button from "../component/common/button/Button";
@@ -43,6 +43,11 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 	const {id = ""} = useParams();
 	const dispatch = useGlobalDispatch();
 	const navigate = useNavigate();
+	const location = useLocation();
+	const routeState = location.state as {returnTo?:{path?:string;q?:string;status?:"active"|"archived";page?:number}}|null;
+	const returnTo = routeState?.returnTo;
+	const returnPath = returnTo?.path === "/coaches" ? "/coaches" : "/athletes";
+	const directoryLabel = returnPath === "/coaches" ? "Тренеры" : "Спортсмены";
 	const sessionVersion = useGlobalSelector(state => state.userTokenReducer.sessionVersion);
 	const detail = useGlobalSelector(state => state.athleteReducer);
 	const profileId = detail.profileId;
@@ -56,6 +61,9 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 	const [archiveError, setArchiveError] = useState("");
 	const [archiveNotice, setArchiveNotice] = useState("");
 	const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+	const [coachConfirmOpen, setCoachConfirmOpen] = useState(false);
+	const [coachPending, setCoachPending] = useState(false);
+	const [coachError, setCoachError] = useState("");
 	const dialogRef = useRef<HTMLDivElement>(null);
 	const previousFocusRef = useRef<HTMLElement | null>(null);
 	const bypassBlockerRef = useRef(false);
@@ -68,7 +76,7 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 	const blockerRef = useRef(blocker);
 	blockerRef.current = blocker;
 	const confirmDiscard = blocker.state === "blocked";
-	const activeDialog = confirmDiscard || archiveConfirmOpen;
+	const activeDialog = confirmDiscard || archiveConfirmOpen || coachConfirmOpen;
 
 	useEffect(() => {
 		setInitialized(false);
@@ -113,6 +121,7 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 				event.preventDefault();
 				if (confirmDiscard) blockerRef.current.reset?.();
 				else if (archiveConfirmOpen) setArchiveConfirmOpen(false);
+				else if (coachConfirmOpen) setCoachConfirmOpen(false);
 				else return;
 				return;
 			}
@@ -131,7 +140,7 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 			if (appRoot) appRoot.inert = priorInert;
 			if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
 		};
-	}, [activeDialog, confirmDiscard, archiveConfirmOpen]);
+	}, [activeDialog, confirmDiscard, archiveConfirmOpen, coachConfirmOpen]);
 
 	const change = (field: FieldName) => (event: ChangeEvent<HTMLInputElement>) => {
 		const input = event.currentTarget;
@@ -185,11 +194,15 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 
 	const refreshCatalog = (statusWillChange: boolean) => {
 		const sourceStatus = profile?.isActive ? "active" : "archived";
-		const removesCurrent = statusWillChange && detail.listStatus === sourceStatus;
-		const nextTotal = Math.max(0, detail.total - Number(removesCurrent));
+		const isCoachDirectory = returnPath === "/coaches";
+		const directory = isCoachDirectory ? "coaches" : "athletes";
+		const listStatus = returnTo?.status ?? detail.selectedStatus[directory];
+		const list = detail.catalogs[directory][listStatus];
+		const removesCurrent = statusWillChange && listStatus === sourceStatus;
+		const nextTotal = Math.max(0, list.total - Number(removesCurrent));
 		const lastValidOffset = Math.floor(Math.max(0, nextTotal - 1) / 50) * 50;
-		const offset = Math.min(detail.listOffset, lastValidOffset);
-		return dispatch(fetchAthletes({status: detail.listStatus, q: detail.listQuery || undefined, limit: 50, offset}));
+		const offset = Math.min(list.offset, lastValidOffset);
+		return dispatch(fetchAthletes({status: listStatus, q: list.query || undefined, limit: 50, offset, isCoach:isCoachDirectory}));
 	};
 	const retryArchiveRestore = async () => {
 		if (!profile) return;
@@ -202,7 +215,24 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 		} catch (error) { setArchiveError(operationError((error as {kind?: string})?.kind, profile.isActive ? "архивировать" : "восстановить")); }
 		finally { setArchivePending(false); }
 	};
-	const discard = () => navigate(`/athletes/${id}`);
+	const discard = () => navigate(`/athletes/${id}`, {state:location.state});
+	const listContext = {path:returnPath,q:returnTo?.q,status:returnTo?.status??"active",page:returnTo?.page??1};
+	const returnToDirectory = (destination=returnPath,saveNotice?:string) => navigate(destination,{state:{returnTo:{...listContext,path:destination,page:1},saveNotice}});
+	const changeCoachStatus = async () => {
+		if (!profile) return;
+		const desired = !profile.isCoach;
+		setCoachPending(true);setCoachError("");
+		try {
+			await dispatch(setAthleteCoach({id,isCoach:desired,sessionVersion})).unwrap();
+			setCoachConfirmOpen(false);
+			const notice=desired?"Готово: Статус «Тренер» назначен.":profile.isActive?"Готово: карточка в разделе «Спортсмены». Членство в составе не восстановлено.":"Профиль и история сохранены; членство не восстановлено.";
+			returnToDirectory(desired?"/coaches":"/athletes",notice);
+		} catch (error) {
+			const failure=error as {kind?:string;status?:number};
+			const mobile=window.matchMedia("(max-width: 767px)").matches;
+			setCoachError(failure.kind==="unauthorized"?"Сессия завершена. Войдите снова.":failure.kind==="forbidden"?"Нет прав изменить статус тренера.":failure.kind==="notFound"?"Карточка не найдена. Обновите список.":failure.kind==="service"&&failure.status?mobile?"Ошибка сервиса. Повторите попытку.":"Ошибка сервиса. Не удалось изменить раздел. Повторите попытку.":mobile?"Нет сети. Проверьте подключение и повторите.":"Нет соединения. Проверьте сеть и повторите попытку.");
+		} finally {setCoachPending(false);}
+	};
 	const continueDiscardPrompt = () => {
 		blockerRef.current.reset?.();
 	};
@@ -222,7 +252,7 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 		</div>;
 	};
 
-	if (!isValidAthleteId(id)) return <main className={style.page}><header className={style.formHeader}><Link className={style.backLink} to="/athletes"><svg className={style.backArrow} viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M11.5 4.5 6 10l5.5 5.5M6.5 10H17" /></svg><span>Спортсмены</span></Link><h1>Карточка спортсмена недоступна</h1></header><section className={style.statePanel}><FormMessage>Проверьте ссылку: указан неверный идентификатор карточки.</FormMessage><Link className={style.inlineLink} to="/athletes">Вернуться к списку спортсменов</Link></section></main>;
+	if (!isValidAthleteId(id)) return <main className={style.page}><header className={style.formHeader}><Link className={style.backLink} to={returnPath}><svg className={style.backArrow} viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M11.5 4.5 6 10l5.5 5.5M6.5 10H17" /></svg><span>{directoryLabel}</span></Link><h1>Карточка спортсмена недоступна</h1></header><section className={style.statePanel}><FormMessage>Проверьте ссылку: указан неверный идентификатор карточки.</FormMessage><Link className={style.inlineLink} to={returnPath}>Вернуться к списку {directoryLabel.toLowerCase()}</Link></section></main>;
 	if (!profile && (detail.profileLoading || detail.profileId !== id)) return <main className={style.page}><p className={style.state} role="status">Загружаем карточку спортсмена…</p></main>;
 	if (!profile) {
 		const kind = detail.profileErrorKind;
@@ -233,24 +263,27 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 		<section className={style.successPanel} role="status" aria-labelledby="save-success-title">
 			<h1 id="save-success-title">Изменения сохранены</h1>
 			<p>Данные спортсмена обновлены.</p>
-			<ButtonLink to={`/athletes/${id}`}>К карточке спортсмена</ButtonLink>
+			<ButtonLink to={returnPath} state={{returnTo:listContext,saveNotice:profile.isCoach?"Сохранено. Статус «Тренер» сохранён.":"Изменения сохранены."}}>К списку {directoryLabel.toLowerCase()}</ButtonLink>
 		</section>
 	</main>;
 
 	if (!editing) return <main className={`${style.page} ${style.detailPage}`}>
-		<header className={style.profileHeader}><nav className={style.breadcrumb} aria-label="Навигационная цепочка"><Link to="/athletes">Спортсмены</Link><span aria-hidden="true">/</span><span>{fullName(profile)}</span></nav><h1>{fullName(profile)}</h1><p>{profile.isActive?"Карточка спортсмена":"Редактирование не меняет статус «В архиве»."}</p></header>
+		<header className={style.profileHeader}><nav className={style.breadcrumb} aria-label="Навигационная цепочка"><Link to={returnPath} state={{returnTo:listContext}}>{directoryLabel}</Link><span aria-hidden="true">/</span><span>{fullName(profile)}</span></nav><h1>{fullName(profile)}</h1><p>{profile.isActive?"Карточка спортсмена":"Редактирование не меняет статус «В архиве»."}</p></header>
 		<section className={`${style.formCard} ${style.profileCard}`} aria-labelledby="athlete-heading"><div className={style.cardHeading}><h2 id="athlete-heading" className={style.profileSectionTitle}>Данные спортсмена</h2><AthleteStatusBadge active={profile.isActive}/></div><dl className={style.profileGrid}>
 			<div><dt>Дата рождения</dt><dd>{formatBirthDateDmy(profile.birthDate) ?? "—"}</dd></div><div><dt>Телефон спортсмена</dt><dd>{profile.phone ?? "—"}</dd></div>
 			<div><dt>Родитель</dt><dd>{parentName(profile) || "—"}</dd></div><div><dt>Телефон родителя</dt><dd>{profile.parentPhone ?? "—"}</dd></div>
+			<div className={style.coachStatus}><dt>Статус тренера</dt><dd>{profile.isCoach?"Тренер":"Не назначен"}</dd><small>Статус карточки. Аккаунт и доступ в кабинет не создаются.</small></div>
 		</dl></section>
+		{coachError&&<div role="alert"><FormMessage>{coachError}</FormMessage><Button variant="text" disabled={coachPending} onClick={changeCoachStatus}>{coachPending?"Сохранение…":"Повторить"}</Button></div>}
 		{archiveError && <><FormMessage>{archiveError}</FormMessage>{archiveError.startsWith("Сессия завершена")&&<Link className={style.inlineLink} to="/logout">Завершить сессию и войти снова</Link>}{archiveError.startsWith("Карточка спортсмена не найдена")&&<Link className={style.inlineLink} to="/athletes">Вернуться к списку спортсменов</Link>}{archiveError.startsWith("Статус карточки уже изменён")&&<Button variant="text" onClick={()=>{dispatch(athleteActions.clearAthleteProfile());dispatch(fetchAthlete({id,sessionVersion}));}}>Обновить карточку</Button>}{archiveError.startsWith("Не удалось")&&<Button variant="text" disabled={archivePending} onClick={retryArchiveRestore}>{archivePending?"Повтор…":"Повторить"}</Button>}</>}{archiveNotice && <FormMessage variant="notice">{archiveNotice}</FormMessage>}
-<div className={style.profileActions}><ButtonLink to={`/athletes/${id}/edit`}>Редактировать</ButtonLink>{profile.isActive ? <Button variant="secondary" disabled={archivePending} onClick={()=>setArchiveConfirmOpen(true)}>Архивировать</Button> : <Button disabled={archivePending} onClick={async()=>{setArchivePending(true);setArchiveError("");try{await dispatch(setAthleteArchived({id,archived:false,sessionVersion})).unwrap();setArchiveNotice("Карточка восстановлена. Чтобы вернуть спортсмена в группу, добавьте его вручную.");refreshCatalog(true);}catch(e){const k=(e as {kind?:string})?.kind;setArchiveError(operationError(k,"восстановить"));}finally{setArchivePending(false);}}}>{archivePending?"Восстановление…":"Восстановить"}</Button>}</div>
+<div className={style.profileActions}><ButtonLink to={`/athletes/${id}/edit`} state={{returnTo:listContext}}>Редактировать</ButtonLink><Button variant="secondary" disabled={coachPending} onClick={()=>setCoachConfirmOpen(true)}>{coachPending?"Сохранение…":profile.isCoach?"Сделать спортсменом":"Назначить тренером"}</Button>{profile.isActive ? <Button variant="secondary" disabled={archivePending} onClick={()=>setArchiveConfirmOpen(true)}>Архивировать</Button> : <Button disabled={archivePending} onClick={async()=>{setArchivePending(true);setArchiveError("");try{await dispatch(setAthleteArchived({id,archived:false,sessionVersion})).unwrap();setArchiveNotice("Карточка восстановлена. Чтобы вернуть спортсмена в группу, добавьте его вручную.");refreshCatalog(true);}catch(e){const k=(e as {kind?:string})?.kind;setArchiveError(operationError(k,"восстановить"));}finally{setArchivePending(false);}}}>{archivePending?"Восстановление…":"Восстановить"}</Button>}</div>
+		{coachConfirmOpen&&createPortal(<div className={style.confirmOverlay}><div ref={dialogRef} className={style.confirmPanel} role="alertdialog" aria-modal="true" aria-busy={coachPending} aria-labelledby="coach-title" aria-describedby="coach-description" tabIndex={-1}><h2 id="coach-title">{profile.isCoach?"Сделать спортсменом?":"Назначить тренером?"}</h2><p id="coach-description">{profile.isCoach?`Карточка перейдёт в «Спортсмены»${profile.isActive?"":" и останется в архиве"}. Профиль и история сохраняются; аккаунт/кабинет не меняются, членство не восстанавливается.`:"Карточка получит статус тренера. Аккаунт и доступ в кабинет не создаются."}</p>{coachPending&&<p role="status" aria-live="polite">{profile.isCoach?window.matchMedia("(max-width: 767px)").matches?"Ожидание: Переводим в «Спортсмены»…":"Ожидание: Переводим карточку в «Спортсмены»…":"Ожидание: Назначаем тренером…"}</p>}{coachError&&<><FormMessage>{coachError}</FormMessage><Button variant="text" disabled={coachPending} onClick={changeCoachStatus}>Повторить</Button></>}<div className={style.actions}><Button disabled={coachPending} onClick={changeCoachStatus}>{coachPending?"Сохранение…":profile.isCoach?"Сделать спортсменом":"Назначить тренером"}</Button><Button variant="secondary" disabled={coachPending} onClick={()=>setCoachConfirmOpen(false)}>Отмена</Button></div></div></div>,document.body)}
    {archiveConfirmOpen&&createPortal(<div className={style.confirmOverlay}><div ref={dialogRef} className={style.confirmPanel} role="alertdialog" aria-modal="true" aria-labelledby="archive-title" aria-describedby="archive-description" tabIndex={-1}><h2 id="archive-title">Архивировать спортсмена?</h2><p id="archive-description">Карточка останется в архиве. Данные и история посещений сохранятся.</p><div className={style.actions}><Button disabled={archivePending} onClick={async()=>{setArchivePending(true);setArchiveError("");try{await dispatch(setAthleteArchived({id,archived:true,sessionVersion})).unwrap();setArchiveConfirmOpen(false);setArchiveNotice("Карточка перенесена в архив. Данные и история посещений сохранены.");refreshCatalog(true);}catch(e){setArchiveConfirmOpen(false);setArchiveError(operationError((e as {kind?:string})?.kind,"архивировать"));}finally{setArchivePending(false);}}}>{archivePending?"Архивация…":"Архивировать"}</Button><Button variant="secondary" disabled={archivePending} onClick={()=>setArchiveConfirmOpen(false)}>Отмена</Button></div></div></div>,document.body)}
 	</main>
 
 	return <>
 	<main className={`${style.page} ${style.detailPage}`}>
-		<header className={`${style.formHeader} ${style.detailFormHeader}`}><nav className={style.breadcrumb} aria-label="Навигационная цепочка"><Link to="/athletes">Спортсмены</Link><span aria-hidden="true">/</span><Link to={`/athletes/${id}`}>{shortName(profile)}</Link><span aria-hidden="true">/</span><span>Редактирование</span></nav><h1 className={style.editDesktopTitle}>Редактирование карточки</h1><h1 className={style.editMobileTitle}>Редактировать</h1><p className={style.editDesktopDescription}>Измените данные спортсмена и сохраните карточку</p><p className={style.editMobileDescription}>{shortName(profile)}</p></header>
+		<header className={`${style.formHeader} ${style.detailFormHeader}`}><nav className={style.breadcrumb} aria-label="Навигационная цепочка"><Link to={returnPath} state={{returnTo:listContext}}>{directoryLabel}</Link><span aria-hidden="true">/</span><Link to={`/athletes/${id}`} state={{returnTo:listContext}}>{shortName(profile)}</Link><span aria-hidden="true">/</span><span>Редактирование</span></nav><h1 className={style.editDesktopTitle}>Редактирование карточки</h1><h1 className={style.editMobileTitle}>Редактировать</h1><p className={style.editDesktopDescription}>Измените данные спортсмена и сохраните карточку</p><p className={style.editMobileDescription}>{shortName(profile)}</p></header>
 		{detail.profileSaveErrorKind && <FormMessage id="profile-message">{detail.profileSaveErrorKind === "unauthorized" ? "Сессия завершена. Черновик остался в форме." : detail.profileSaveErrorKind === "forbidden" ? "Нет доступа для сохранения. Черновик остался в форме." : detail.profileSaveErrorKind === "notFound" ? "Карточка больше недоступна. Черновик остался в форме." : "Не удалось сохранить карточку. Данные остались в форме — повторите попытку."}</FormMessage>}
 		<form className={`${style.formCard} ${style.detailForm}`} onSubmit={handleSubmit} noValidate>
 			{Object.values(errors).some(Boolean) && <FormMessage>Проверьте отмеченные поля.</FormMessage>}

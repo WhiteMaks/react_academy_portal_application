@@ -33,8 +33,8 @@ export const formatDateInput = (value: Date): string | null => {
 	return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 };
 
-export const formatBirthDateDmy = (value: Date): string | null => {
-	const date = formatDateInput(value);
+export const formatBirthDateDmy = (value: Date | string): string | null => {
+	const date = value instanceof Date ? formatDateInput(value) : parseBirthDateWire(value) ? value.slice(0, 10) : null;
 	return date ? date.split("-").reverse().join(".") : null;
 };
 

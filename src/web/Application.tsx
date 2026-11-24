@@ -80,7 +80,8 @@ const Application: FC = () => {
 			<Route path="calendar" element={<SectionPlaceholder title="Тренировки"/>}/>
 			<Route path="payments" element={<SectionPlaceholder title="Оплата"/>}/>
 			<Route path="groups" element={<SectionPlaceholder title="Группы"/>}/>
-			<Route path="couches" element={<SectionPlaceholder title="Тренеры"/>}/>
+			<Route path="couches" element={<Navigate to="/coaches" replace/>}/>
+			<Route path="coaches" element={<AthletesPage isCoach/>}/>
 			<Route path="athletes" element={<AthletesPage/>}/>
 			<Route path="athletes/new" element={<AthleteCreatePage/>}/>
 			<Route path="athletes/:id/edit" element={<AthleteProfilePage editing/>}/>
