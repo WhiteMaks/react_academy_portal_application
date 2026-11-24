@@ -11,6 +11,7 @@ export interface AthleteV1Response {
 	parentMiddleName: string | null;
 	parentPhone: string | null;
 	isActive: boolean;
+	updatedAt: string;
 }
 
 export default AthleteV1Response;

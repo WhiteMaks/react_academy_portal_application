@@ -1,4 +1,4 @@
-export type ApiErrorKind = "credentials" | "unauthorized" | "forbidden" | "service" | "request" | "superseded";
+export type ApiErrorKind = "credentials" | "unauthorized" | "forbidden" | "notFound" | "conflict" | "service" | "request" | "superseded";
 
 export interface ApiFailure {
 	kind: ApiErrorKind;

@@ -13,6 +13,7 @@ import AdminBootstrapPage from "./page/AdminBootstrapPage";
 import SectionPlaceholder from "./page/SectionPlaceholder";
 import AthletesPage from "./page/AthletesPage";
 import AthleteCreatePage from "./page/AthleteCreatePage";
+import AthleteProfilePage from "./page/AthleteProfilePage";
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -82,6 +83,8 @@ const Application: FC = () => {
 			<Route path="couches" element={<SectionPlaceholder title="Тренеры"/>}/>
 			<Route path="athletes" element={<AthletesPage/>}/>
 			<Route path="athletes/new" element={<AthleteCreatePage/>}/>
+			<Route path="athletes/:id/edit" element={<AthleteProfilePage editing/>}/>
+			<Route path="athletes/:id" element={<AthleteProfilePage/>}/>
 			<Route path="*" element={<SectionPlaceholder notFound/>}/>
 		</Route>
 	);

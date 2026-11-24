@@ -3,6 +3,7 @@ import AcademyPortalService from "../../../api/AcademyPortalService";
 import {ApiFailure, toApiFailure} from "../../../api/ApiError";
 import AthleteV1Response from "../../../api/models/athlete/AthleteV1Response";
 import PostAthleteV1Request from "../../../api/models/athlete/PostAthleteV1Request";
+import PutAthleteV1Request from "../../../api/models/athlete/PutAthleteV1Request";
 
 interface AthleteState {
 	athletes: AthleteV1Response[];
@@ -11,9 +12,22 @@ interface AthleteState {
 	loaded: boolean;
 	listErrorKind?: ApiFailure["kind"];
 	createErrorKind?: ApiFailure["kind"];
+	profile: AthleteV1Response | null;
+	profileId: string | null;
+	profileLoaded: boolean;
+	profileLoading: boolean;
+	profileSaving: boolean;
+	profileErrorKind?: ApiFailure["kind"];
+	profileSaveErrorKind?: ApiFailure["kind"];
 	activeListRequestId?: string;
 	activeCreateRequestId?: string;
 	activeCreateSessionVersion?: number;
+	activeProfileRequestId?: string;
+	activeProfileRequestIdValue?: string;
+	activeProfileRequestSessionVersion?: number;
+	activeProfileSaveRequestId?: string;
+	activeProfileSaveId?: string;
+	activeProfileSaveSessionVersion?: number;
 }
 
 interface SessionState {
@@ -31,7 +45,19 @@ interface CreateAthleteArgs {
 	sessionVersion: number;
 }
 
-const initialState: AthleteState = {athletes: [], loading: false, saving: false, loaded: false};
+interface ProfileRequestArgs {
+	id: string;
+	sessionVersion: number;
+}
+
+interface UpdateProfileArgs extends ProfileRequestArgs {
+	request: PutAthleteV1Request;
+}
+
+const initialState: AthleteState = {
+	athletes: [], loading: false, saving: false, loaded: false,
+	profile: null, profileId: null, profileLoaded: false, profileLoading: false, profileSaving: false
+};
 const service = AcademyPortalService.getInstance();
 
 const compareId = (left: string, right: string) => {
@@ -86,10 +112,67 @@ export const createAthlete = createAsyncThunk<AthleteV1Response, CreateAthleteAr
 	args.sessionVersion === getState().userTokenReducer.sessionVersion
 });
 
+export const fetchAthlete = createAsyncThunk<AthleteV1Response, ProfileRequestArgs, {
+	rejectValue: ApiFailure;
+	state: StateWithSession;
+}>("athlete/profile", async ({id, sessionVersion: expectedSessionVersion}, {getState, rejectWithValue}) => {
+	const {token, sessionVersion} = getState().userTokenReducer;
+	if (!token) return rejectWithValue({kind: "unauthorized"});
+	if (sessionVersion !== expectedSessionVersion) return rejectWithValue({kind: "superseded"});
+	try {
+		const response = await service.getAthleteV1(id);
+		const session = getState().userTokenReducer;
+		if (session.token !== token || session.sessionVersion !== expectedSessionVersion) return rejectWithValue({kind: "superseded"});
+		if (response.id !== id) return rejectWithValue({kind: "service"});
+		return response;
+	} catch (error) {
+		const session = getState().userTokenReducer;
+		if (session.token !== token || session.sessionVersion !== expectedSessionVersion) return rejectWithValue({kind: "superseded"});
+		return rejectWithValue(toApiFailure(error));
+	}
+}, {condition: ({id, sessionVersion}, {getState}) => {
+	const state = getState();
+	return state.userTokenReducer.token !== null && state.userTokenReducer.sessionVersion === sessionVersion &&
+		!(state.athleteReducer.profileLoading && state.athleteReducer.profileId === id) &&
+		!(state.athleteReducer.profileLoaded && state.athleteReducer.profileId === id);
+}});
+
+export const updateAthlete = createAsyncThunk<AthleteV1Response, UpdateProfileArgs, {
+	rejectValue: ApiFailure;
+	state: StateWithSession;
+}>("athlete/updateProfile", async ({id, request, sessionVersion: expectedSessionVersion}, {getState, rejectWithValue}) => {
+	const {token, sessionVersion} = getState().userTokenReducer;
+	if (!token) return rejectWithValue({kind: "unauthorized"});
+	if (sessionVersion !== expectedSessionVersion) return rejectWithValue({kind: "superseded"});
+	try {
+		const response = await service.putAthleteV1(id, request);
+		const session = getState().userTokenReducer;
+		if (session.token !== token || session.sessionVersion !== expectedSessionVersion) return rejectWithValue({kind: "superseded"});
+		if (response.id !== id) return rejectWithValue({kind: "service"});
+		return response;
+	} catch (error) {
+		const session = getState().userTokenReducer;
+		if (session.token !== token || session.sessionVersion !== expectedSessionVersion) return rejectWithValue({kind: "superseded"});
+		return rejectWithValue(toApiFailure(error));
+	}
+}, {condition: ({id, sessionVersion}, {getState}) => {
+	const state = getState();
+	return !state.athleteReducer.profileSaving && state.athleteReducer.profileId === id &&
+		state.userTokenReducer.token !== null && state.userTokenReducer.sessionVersion === sessionVersion;
+}});
+
 export const athleteSlice = createSlice({
 	name: "athlete",
 	initialState,
 	reducers: {
+		clearAthleteProfile: state => {
+			state.profile = null;
+			state.profileId = null;
+			state.profileLoaded = false;
+			state.profileLoading = false;
+			state.profileErrorKind = undefined;
+			state.profileSaveErrorKind = undefined;
+		},
 		clearAthleteState: state => {
 			state.athletes = [];
 			state.loading = false;
@@ -100,6 +183,19 @@ export const athleteSlice = createSlice({
 			state.activeListRequestId = undefined;
 			state.activeCreateRequestId = undefined;
 			state.activeCreateSessionVersion = undefined;
+			state.profile = null;
+			state.profileId = null;
+			state.profileLoaded = false;
+			state.profileLoading = false;
+			state.profileSaving = false;
+			state.profileErrorKind = undefined;
+			state.profileSaveErrorKind = undefined;
+			state.activeProfileRequestId = undefined;
+			state.activeProfileRequestIdValue = undefined;
+			state.activeProfileRequestSessionVersion = undefined;
+			state.activeProfileSaveRequestId = undefined;
+			state.activeProfileSaveId = undefined;
+			state.activeProfileSaveSessionVersion = undefined;
 		}
 	},
 	extraReducers: builder => {
@@ -144,6 +240,84 @@ export const athleteSlice = createSlice({
 			state.activeCreateRequestId = undefined;
 			state.activeCreateSessionVersion = undefined;
 		});
+		builder.addCase(fetchAthlete.pending, (state, action) => {
+			const {id, sessionVersion} = action.meta.arg;
+			if (state.profileId !== id) {
+				state.profile = null;
+				state.profileLoaded = false;
+				state.profileSaveErrorKind = undefined;
+				if (state.activeProfileSaveId !== id) {
+					state.profileSaving = false;
+					state.activeProfileSaveRequestId = undefined;
+					state.activeProfileSaveId = undefined;
+					state.activeProfileSaveSessionVersion = undefined;
+				}
+			}
+			state.profileId = id;
+			state.profileLoading = true;
+			state.profileErrorKind = undefined;
+			state.activeProfileRequestId = action.meta.requestId;
+			state.activeProfileRequestIdValue = id;
+			state.activeProfileRequestSessionVersion = sessionVersion;
+		});
+		builder.addCase(fetchAthlete.fulfilled, (state, action) => {
+			if (state.activeProfileRequestId !== action.meta.requestId || state.activeProfileRequestIdValue !== action.meta.arg.id ||
+				state.activeProfileRequestSessionVersion !== action.meta.arg.sessionVersion) return;
+			state.profile = action.payload;
+			state.profileId = action.payload.id;
+			state.profileLoading = false;
+			state.profileLoaded = true;
+			state.profileErrorKind = undefined;
+			state.activeProfileRequestId = undefined;
+			state.activeProfileRequestIdValue = undefined;
+			state.activeProfileRequestSessionVersion = undefined;
+		});
+		builder.addCase(fetchAthlete.rejected, (state, action) => {
+			if (state.activeProfileRequestId !== action.meta.requestId || state.activeProfileRequestIdValue !== action.meta.arg.id ||
+				state.activeProfileRequestSessionVersion !== action.meta.arg.sessionVersion) return;
+			state.profileLoading = false;
+			state.profileLoaded = false;
+			state.profileErrorKind = action.payload?.kind === "superseded" ? undefined : action.payload?.kind ?? "service";
+			state.activeProfileRequestId = undefined;
+			state.activeProfileRequestIdValue = undefined;
+			state.activeProfileRequestSessionVersion = undefined;
+		});
+		builder.addCase(updateAthlete.pending, (state, action) => {
+			state.profileSaving = true;
+			state.profileSaveErrorKind = undefined;
+			state.activeProfileSaveRequestId = action.meta.requestId;
+			state.activeProfileSaveId = action.meta.arg.id;
+			state.activeProfileSaveSessionVersion = action.meta.arg.sessionVersion;
+		});
+		builder.addCase(updateAthlete.fulfilled, (state, action) => {
+			if (state.activeProfileSaveRequestId !== action.meta.requestId || state.activeProfileSaveId !== action.meta.arg.id ||
+				state.activeProfileSaveSessionVersion !== action.meta.arg.sessionVersion) return;
+			if (state.profileId !== action.meta.arg.id) {
+				state.profileSaving = false;
+				state.activeProfileSaveRequestId = undefined;
+				state.activeProfileSaveId = undefined;
+				state.activeProfileSaveSessionVersion = undefined;
+				return;
+			}
+			state.profile = action.payload;
+			state.profileLoading = false;
+			state.profileLoaded = true;
+			state.profileSaving = false;
+			state.profileSaveErrorKind = undefined;
+			state.athletes = state.athletes.map(athlete => athlete.id === action.payload.id ? action.payload : athlete);
+			state.activeProfileSaveRequestId = undefined;
+			state.activeProfileSaveId = undefined;
+			state.activeProfileSaveSessionVersion = undefined;
+		});
+		builder.addCase(updateAthlete.rejected, (state, action) => {
+			if (state.activeProfileSaveRequestId !== action.meta.requestId || state.activeProfileSaveId !== action.meta.arg.id ||
+				state.activeProfileSaveSessionVersion !== action.meta.arg.sessionVersion) return;
+			state.profileSaving = false;
+			state.profileSaveErrorKind = action.payload?.kind === "superseded" ? undefined : action.payload?.kind ?? "service";
+			state.activeProfileSaveRequestId = undefined;
+			state.activeProfileSaveId = undefined;
+			state.activeProfileSaveSessionVersion = undefined;
+		});
 		builder.addMatcher((action): action is PayloadAction =>
 			["user/logout/pending", "user/logout/fulfilled", "user/token/pending", "user/token/fulfilled"].includes(action.type), state => {
 			state.athletes = [];
@@ -155,6 +329,19 @@ export const athleteSlice = createSlice({
 			state.activeListRequestId = undefined;
 			state.activeCreateRequestId = undefined;
 			state.activeCreateSessionVersion = undefined;
+			state.profile = null;
+			state.profileId = null;
+			state.profileLoaded = false;
+			state.profileLoading = false;
+			state.profileSaving = false;
+			state.profileErrorKind = undefined;
+			state.profileSaveErrorKind = undefined;
+			state.activeProfileRequestId = undefined;
+			state.activeProfileRequestIdValue = undefined;
+			state.activeProfileRequestSessionVersion = undefined;
+			state.activeProfileSaveRequestId = undefined;
+			state.activeProfileSaveId = undefined;
+			state.activeProfileSaveSessionVersion = undefined;
 		});
 	}
 });

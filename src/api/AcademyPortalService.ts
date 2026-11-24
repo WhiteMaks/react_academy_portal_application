@@ -8,6 +8,7 @@ import PostUserV1Response from "./models/user/PostUserV1Response";
 import GetAthletesV1Response from "./models/athlete/GetAthletesV1Response";
 import AthleteV1Response from "./models/athlete/AthleteV1Response";
 import PostAthleteV1Request from "./models/athlete/PostAthleteV1Request";
+import PutAthleteV1Request from "./models/athlete/PutAthleteV1Request";
 import {formatBirthDateWire, parseBirthDateWire} from "./models/athlete/birthDate";
 
 class AcademyPortalService {
@@ -171,6 +172,44 @@ class AcademyPortalService {
 		}
 	}
 
+	public async getAthleteV1(id: string): Promise<AthleteV1Response> {
+		const response = await this.fetchAthleteItem("GET", id);
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+
+		try {
+			const data: unknown = await response.json();
+			const athlete = this.parseAthleteResponse(data);
+			if (!athlete) throw new ApiError("service", response.status);
+			return athlete;
+		} catch {
+			throw new ApiError("service", response.status);
+		}
+	}
+
+	public async putAthleteV1(id: string, request: PutAthleteV1Request): Promise<AthleteV1Response> {
+		const birthDate = formatBirthDateWire(request.birthDate);
+		if (!birthDate) throw new ApiError("request");
+		const response = await this.fetchAthleteItem("PUT", id, {...request, birthDate});
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (response.status === 400) throw new ApiError("request", response.status);
+		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+		if (response.status !== 200) throw new ApiError("service", response.status);
+
+		try {
+			const data: unknown = await response.json();
+			const athlete = this.parseAthleteResponse(data);
+			if (!athlete) throw new ApiError("service", response.status);
+			return athlete;
+		} catch {
+			throw new ApiError("service", response.status);
+		}
+	}
+
 	public async postUserTokenV1(request: PostUserTokenV1Request): Promise<PostUserTokenV1Response> {
 		const url = this.host + this.USER_TOKEN_V1;
 		let response: Response;
@@ -226,6 +265,22 @@ class AcademyPortalService {
 		}
 	}
 
+	private async fetchAthleteItem(method: "GET" | "PUT", id: string, request?: object): Promise<Response> {
+		if (!/^[1-9]\d*$/.test(id)) throw new ApiError("request");
+		const url = this.host + this.ATHLETE + "/" + id + this.V1;
+		let body: string | undefined;
+		if (request) body = JSON.stringify(request);
+		try {
+			return await fetch(url, {
+				method,
+				headers: request ? {...this.generateHeaders(), "Content-Type": "application/json"} : this.generateHeaders(),
+				...(body ? {body} : {})
+			});
+		} catch {
+			throw new ApiError("service");
+		}
+	}
+
 	private isRecord(value: unknown): value is Record<string, unknown> {
 		return typeof value === "object" && value !== null;
 	}
@@ -243,13 +298,21 @@ class AcademyPortalService {
 		return value === null || typeof value === "string";
 	}
 
+	private isUpdatedAt(value: unknown): value is string {
+		if (typeof value !== "string") return false;
+		const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z$/.exec(value);
+		if (!match || !parseBirthDateWire(`${match[1]}T00:00:00Z`)) return false;
+		return Number(match[2]) <= 23 && Number(match[3]) <= 59 && Number(match[4]) <= 59;
+	}
+
 	private parseAthleteResponse(value: unknown): AthleteV1Response | null {
 		if (!this.isRecord(value) || typeof value.id !== "string" || !/^\d+$/.test(value.id) ||
 			typeof value.secondName !== "string" || typeof value.firstName !== "string" ||
 			!this.isNullableString(value.middleName) || !this.isNullableString(value.photoUrl) ||
 			!this.isNullableString(value.phone) || !this.isNullableString(value.parentSecondName) ||
 			!this.isNullableString(value.parentFirstName) || !this.isNullableString(value.parentMiddleName) ||
-			!this.isNullableString(value.parentPhone) || typeof value.isActive !== "boolean") return null;
+			!this.isNullableString(value.parentPhone) || typeof value.isActive !== "boolean" ||
+			!this.isUpdatedAt(value.updatedAt)) return null;
 
 		const birthDate = parseBirthDateWire(value.birthDate);
 		if (!birthDate) return null;
@@ -257,7 +320,8 @@ class AcademyPortalService {
 			id: value.id, secondName: value.secondName, firstName: value.firstName,
 			middleName: value.middleName, birthDate, photoUrl: value.photoUrl, phone: value.phone,
 			parentSecondName: value.parentSecondName, parentFirstName: value.parentFirstName,
-			parentMiddleName: value.parentMiddleName, parentPhone: value.parentPhone, isActive: value.isActive
+			parentMiddleName: value.parentMiddleName, parentPhone: value.parentPhone, isActive: value.isActive,
+			updatedAt: value.updatedAt
 		};
 	}
 }

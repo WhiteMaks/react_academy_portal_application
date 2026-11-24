@@ -68,7 +68,8 @@ const AthleteCreatePage: FC = () => {
 		}
 		setErrors(current => {
 			const next = {...current};
-			delete next[field];
+			if (isBirthDate && value.length === 10 && !parseBirthDateDisplayInput(value)) next.birthDate = "Проверьте дату.";
+			else delete next[field];
 			return next;
 		});
 	};
@@ -121,20 +122,24 @@ const AthleteCreatePage: FC = () => {
 
 	return (
 		<main className={style.page}>
-			<header className={style.formHeader}><Link className={style.backLink} to="/athletes"><svg className={style.backArrow} viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M11.5 4.5 6 10l5.5 5.5M6.5 10H17" /></svg><span>Спортсмены</span></Link><h1>Добавить спортсмена</h1><p>Заполните данные спортсмена и родителя</p></header>
+			<header className={`${style.formHeader} ${style.createHeader}`}>
+				<nav className={style.breadcrumb} aria-label="Навигационная цепочка"><Link to="/athletes">Спортсмены</Link><span aria-hidden="true">/</span><span>Новый спортсмен</span></nav>
+				<h1>Новый спортсмен</h1>
+				<p><span className={style.createDesktopDescription}>Создайте карточку спортсмена. Обязательны фамилия, имя и дата рождения.</span><span className={style.createMobileDescription}>Основные данные карточки</span></p>
+			</header>
 			{createErrorKind && <FormMessage>{errorText(createErrorKind)}</FormMessage>}
 			{createErrorKind === "unauthorized" && <p><Link className={style.inlineLink} to="/logout">Завершить сессию и войти снова</Link></p>}
-			<form className={style.formCard} onSubmit={handleSubmit} noValidate>
+			<form className={`${style.formCard} ${style.createForm}`} onSubmit={handleSubmit} noValidate>
 				{Object.values(errors).some(Boolean) && <FormMessage>Проверьте отмеченные поля.</FormMessage>}
 				<section className={style.group} aria-labelledby="athlete-heading">
 					<div className={style.nameFields}><h2 id="athlete-heading">Спортсмен</h2>{field("secondName", "Фамилия", true)}{field("firstName", "Имя", true)}{field("middleName", "Отчество (необязательно)")}</div>
-					<div className={style.contactFields}>{field("birthDate", "Дата рождения", true)}{field("phone", "Номер телефона (необязательно)", false, "tel")}</div>
+					<div className={style.contactFields}>{field("birthDate", "Дата рождения", true)}{field("phone", "Телефон спортсмена · необязательно", false, "tel")}</div>
 				</section>
 				<section className={`${style.group} ${style.parentGroup}`} aria-labelledby="parent-heading">
-					<div className={style.nameFields}><h2 id="parent-heading">Родитель</h2>{field("parentSecondName", "Фамилия (необязательно)")}{field("parentFirstName", "Имя (необязательно)")}{field("parentMiddleName", "Отчество (необязательно)")}</div>
-					<div className={style.contactFields}>{field("parentPhone", "Номер телефона (необязательно)", false, "tel")}</div>
+					<div className={style.nameFields}><h2 id="parent-heading">Родитель</h2>{field("parentSecondName", "Фамилия родителя · необязательно")}{field("parentFirstName", "Имя родителя · необязательно")}{field("parentMiddleName", "Отчество родителя · необязательно")}</div>
+					<div className={style.contactFields}>{field("parentPhone", "Телефон родителя · необязательно", false, "tel")}</div>
 				</section>
-				<div className={style.actions}><Link className={style.cancel} to="/athletes">Отмена</Link><Button type="submit" disabled={saving}>{saving ? "Сохранение…" : "Сохранить спортсмена"}</Button></div>
+				<div className={style.actions}><Link className={style.cancel} to="/athletes">Отмена</Link><Button type="submit" disabled={saving}>{saving ? "Сохранение…" : "Создать карточку"}</Button></div>
 			</form>
 		</main>
 	);

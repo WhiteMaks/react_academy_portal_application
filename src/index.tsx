@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import {Provider} from "react-redux";
-import {BrowserRouter} from "react-router-dom";
+import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import Application from './web/Application';
 import {initGlobalStore} from "./data/state/store";
 
@@ -12,13 +12,12 @@ const root = ReactDOM.createRoot(
 );
 
 const globalStore = initGlobalStore();
+const router = createBrowserRouter([{path: "*", element: <Application/>}]);
 
 root.render(
 	<React.StrictMode>
 		<Provider store={globalStore}>
-			<BrowserRouter>
-				<Application/>
-			</BrowserRouter>
+			<RouterProvider router={router}/>
 		</Provider>
 	</React.StrictMode>
 );
