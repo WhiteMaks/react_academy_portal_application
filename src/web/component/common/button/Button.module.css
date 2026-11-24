@@ -38,7 +38,7 @@
 .primary:disabled {
 	background: #eee8e4;
 	color: var(--mvp-muted);
-	cursor: wait;
+	cursor: not-allowed;
 }
 
 .secondary {
@@ -50,8 +50,10 @@
 .secondary:disabled {
 	background: #eee8e4;
 	color: var(--mvp-muted);
-	cursor: wait;
+	cursor: not-allowed;
 }
+
+.text:disabled { cursor: not-allowed; }
 
 .text {
 	border: 0;

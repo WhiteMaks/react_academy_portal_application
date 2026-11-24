@@ -4,7 +4,7 @@ import {createPortal} from "react-dom";
 import AthleteV1Response from "../../api/models/athlete/AthleteV1Response";
 import PutAthleteV1Request from "../../api/models/athlete/PutAthleteV1Request";
 import {formatBirthDateDmy, formatBirthDateDisplayInput, parseBirthDateDisplayInput} from "../../api/models/athlete/birthDate";
-import {athleteActions, fetchAthlete, updateAthlete} from "../../data/state/athlete/AthleteReducer";
+import {athleteActions, fetchAthlete, fetchAthletes, setAthleteArchived, updateAthlete} from "../../data/state/athlete/AthleteReducer";
 import {useGlobalDispatch, useGlobalSelector} from "../../data/state/store";
 import AthleteStatusBadge from "../component/athlete_status_badge/AthleteStatusBadge";
 import Button from "../component/common/button/Button";
@@ -33,6 +33,7 @@ const optional = (value: string): string | null => value.trim() || null;
 const fullName = (profile: AthleteV1Response) => [profile.firstName, profile.middleName, profile.secondName].filter(Boolean).join(" ");
 const shortName = (profile: AthleteV1Response) => [profile.firstName, profile.secondName].filter(Boolean).join(" ");
 const parentName = (profile: AthleteV1Response) => [profile.parentFirstName, profile.parentMiddleName, profile.parentSecondName].filter(Boolean).join(" ");
+const operationError = (kind: string | undefined, verb: string) => kind === "unauthorized" ? "Сессия завершена. Войдите снова, чтобы продолжить." : kind === "forbidden" ? "У вашей учётной записи нет доступа к этой операции." : kind === "notFound" ? "Карточка спортсмена не найдена или больше недоступна." : kind === "conflict" ? "Статус карточки уже изменён. Обновите карточку и повторите действие." : `Не удалось ${verb} карточку. Проверьте соединение и повторите попытку.`;
 const isValidAthleteId = (id: string) => {
 	if (!/^[1-9]\d*$/.test(id)) return false;
 	return id.length < 19 || (id.length === 19 && id <= "9223372036854775807");
@@ -51,6 +52,10 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 	const [errors, setErrors] = useState<FieldErrors>({});
 	const [initialized, setInitialized] = useState(false);
 	const [saveSuccess, setSaveSuccess] = useState(false);
+	const [archivePending, setArchivePending] = useState(false);
+	const [archiveError, setArchiveError] = useState("");
+	const [archiveNotice, setArchiveNotice] = useState("");
+	const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
 	const dialogRef = useRef<HTMLDivElement>(null);
 	const previousFocusRef = useRef<HTMLElement | null>(null);
 	const bypassBlockerRef = useRef(false);
@@ -63,7 +68,7 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 	const blockerRef = useRef(blocker);
 	blockerRef.current = blocker;
 	const confirmDiscard = blocker.state === "blocked";
-	const activeDialog = confirmDiscard;
+	const activeDialog = confirmDiscard || archiveConfirmOpen;
 
 	useEffect(() => {
 		setInitialized(false);
@@ -107,6 +112,7 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 			if (event.key === "Escape") {
 				event.preventDefault();
 				if (confirmDiscard) blockerRef.current.reset?.();
+				else if (archiveConfirmOpen) setArchiveConfirmOpen(false);
 				else return;
 				return;
 			}
@@ -125,7 +131,7 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 			if (appRoot) appRoot.inert = priorInert;
 			if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
 		};
-	}, [activeDialog, confirmDiscard]);
+	}, [activeDialog, confirmDiscard, archiveConfirmOpen]);
 
 	const change = (field: FieldName) => (event: ChangeEvent<HTMLInputElement>) => {
 		const input = event.currentTarget;
@@ -177,6 +183,25 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 		} catch { /* Ошибка сохранения отображается из Redux-состояния; введённые значения остаются в форме. */ }
 	};
 
+	const refreshCatalog = (statusWillChange: boolean) => {
+		const sourceStatus = profile?.isActive ? "active" : "archived";
+		const removesCurrent = statusWillChange && detail.listStatus === sourceStatus;
+		const nextTotal = Math.max(0, detail.total - Number(removesCurrent));
+		const lastValidOffset = Math.floor(Math.max(0, nextTotal - 1) / 50) * 50;
+		const offset = Math.min(detail.listOffset, lastValidOffset);
+		return dispatch(fetchAthletes({status: detail.listStatus, q: detail.listQuery || undefined, limit: 50, offset}));
+	};
+	const retryArchiveRestore = async () => {
+		if (!profile) return;
+		setArchivePending(true);
+		try {
+			await dispatch(setAthleteArchived({id, archived: profile.isActive, sessionVersion})).unwrap();
+			setArchiveError("");
+			setArchiveNotice(profile.isActive ? "Карточка перенесена в архив. Данные и история посещений сохранены." : "Карточка восстановлена. Чтобы вернуть спортсмена в группу, добавьте его вручную.");
+			refreshCatalog(true);
+		} catch (error) { setArchiveError(operationError((error as {kind?: string})?.kind, profile.isActive ? "архивировать" : "восстановить")); }
+		finally { setArchivePending(false); }
+	};
 	const discard = () => navigate(`/athletes/${id}`);
 	const continueDiscardPrompt = () => {
 		blockerRef.current.reset?.();
@@ -213,12 +238,14 @@ const AthleteProfilePage: FC<Props> = ({editing = false}) => {
 	</main>;
 
 	if (!editing) return <main className={`${style.page} ${style.detailPage}`}>
-		<header className={style.profileHeader}><nav className={style.breadcrumb} aria-label="Навигационная цепочка"><Link to="/athletes">Спортсмены</Link><span aria-hidden="true">/</span><span>{fullName(profile)}</span></nav><h1>{fullName(profile)}</h1><p>Карточка спортсмена</p></header>
+		<header className={style.profileHeader}><nav className={style.breadcrumb} aria-label="Навигационная цепочка"><Link to="/athletes">Спортсмены</Link><span aria-hidden="true">/</span><span>{fullName(profile)}</span></nav><h1>{fullName(profile)}</h1><p>{profile.isActive?"Карточка спортсмена":"Редактирование не меняет статус «В архиве»."}</p></header>
 		<section className={`${style.formCard} ${style.profileCard}`} aria-labelledby="athlete-heading"><div className={style.cardHeading}><h2 id="athlete-heading" className={style.profileSectionTitle}>Данные спортсмена</h2><AthleteStatusBadge active={profile.isActive}/></div><dl className={style.profileGrid}>
 			<div><dt>Дата рождения</dt><dd>{formatBirthDateDmy(profile.birthDate) ?? "—"}</dd></div><div><dt>Телефон спортсмена</dt><dd>{profile.phone ?? "—"}</dd></div>
 			<div><dt>Родитель</dt><dd>{parentName(profile) || "—"}</dd></div><div><dt>Телефон родителя</dt><dd>{profile.parentPhone ?? "—"}</dd></div>
 		</dl></section>
-		<div className={style.profileActions}><ButtonLink to={`/athletes/${id}/edit`}>Редактировать</ButtonLink></div>
+		{archiveError && <><FormMessage>{archiveError}</FormMessage>{archiveError.startsWith("Сессия завершена")&&<Link className={style.inlineLink} to="/logout">Завершить сессию и войти снова</Link>}{archiveError.startsWith("Карточка спортсмена не найдена")&&<Link className={style.inlineLink} to="/athletes">Вернуться к списку спортсменов</Link>}{archiveError.startsWith("Статус карточки уже изменён")&&<Button variant="text" onClick={()=>{dispatch(athleteActions.clearAthleteProfile());dispatch(fetchAthlete({id,sessionVersion}));}}>Обновить карточку</Button>}{archiveError.startsWith("Не удалось")&&<Button variant="text" disabled={archivePending} onClick={retryArchiveRestore}>{archivePending?"Повтор…":"Повторить"}</Button>}</>}{archiveNotice && <FormMessage variant="notice">{archiveNotice}</FormMessage>}
+<div className={style.profileActions}><ButtonLink to={`/athletes/${id}/edit`}>Редактировать</ButtonLink>{profile.isActive ? <Button variant="secondary" disabled={archivePending} onClick={()=>setArchiveConfirmOpen(true)}>Архивировать</Button> : <Button disabled={archivePending} onClick={async()=>{setArchivePending(true);setArchiveError("");try{await dispatch(setAthleteArchived({id,archived:false,sessionVersion})).unwrap();setArchiveNotice("Карточка восстановлена. Чтобы вернуть спортсмена в группу, добавьте его вручную.");refreshCatalog(true);}catch(e){const k=(e as {kind?:string})?.kind;setArchiveError(operationError(k,"восстановить"));}finally{setArchivePending(false);}}}>{archivePending?"Восстановление…":"Восстановить"}</Button>}</div>
+   {archiveConfirmOpen&&createPortal(<div className={style.confirmOverlay}><div ref={dialogRef} className={style.confirmPanel} role="alertdialog" aria-modal="true" aria-labelledby="archive-title" aria-describedby="archive-description" tabIndex={-1}><h2 id="archive-title">Архивировать спортсмена?</h2><p id="archive-description">Карточка останется в архиве. Данные и история посещений сохранятся.</p><div className={style.actions}><Button disabled={archivePending} onClick={async()=>{setArchivePending(true);setArchiveError("");try{await dispatch(setAthleteArchived({id,archived:true,sessionVersion})).unwrap();setArchiveConfirmOpen(false);setArchiveNotice("Карточка перенесена в архив. Данные и история посещений сохранены.");refreshCatalog(true);}catch(e){setArchiveConfirmOpen(false);setArchiveError(operationError((e as {kind?:string})?.kind,"архивировать"));}finally{setArchivePending(false);}}}>{archivePending?"Архивация…":"Архивировать"}</Button><Button variant="secondary" disabled={archivePending} onClick={()=>setArchiveConfirmOpen(false)}>Отмена</Button></div></div></div>,document.body)}
 	</main>
 
 	return <>

@@ -8,7 +8,7 @@ interface AthleteStatusBadgeProps {
 const AthleteStatusBadge: FC<AthleteStatusBadgeProps> = ({active}) => (
 	<span className={[style.badge, active ? style.active : style.inactive].join(" ")}>
 		<span className={style.dot} aria-hidden="true"/>
-		<span>{active ? "Активна" : "Неактивна"}</span>
+		<span>{active ? "Активна" : "В архиве"}</span>
 	</span>
 );
 

@@ -7,6 +7,10 @@ import PutAthleteV1Request from "../../../api/models/athlete/PutAthleteV1Request
 
 interface AthleteState {
 	athletes: AthleteV1Response[];
+	total: number;
+	listStatus: "active" | "archived";
+	listQuery: string;
+	listOffset: number;
 	loading: boolean;
 	saving: boolean;
 	loaded: boolean;
@@ -50,15 +54,18 @@ interface ProfileRequestArgs {
 	sessionVersion: number;
 }
 
+interface ArchiveArgs extends ProfileRequestArgs {archived: boolean;}
+
 interface UpdateProfileArgs extends ProfileRequestArgs {
 	request: PutAthleteV1Request;
 }
 
 const initialState: AthleteState = {
-	athletes: [], loading: false, saving: false, loaded: false,
+	athletes: [], total: 0, listStatus: "active", listQuery: "", listOffset: 0, loading: false, saving: false, loaded: false,
 	profile: null, profileId: null, profileLoaded: false, profileLoading: false, profileSaving: false
 };
 const service = AcademyPortalService.getInstance();
+export interface AthleteListArgs {status: "active" | "archived"; q?: string; limit?: number; offset?: number;}
 
 const compareId = (left: string, right: string) => {
 	const normalizedLeft = left.replace(/^0+(?=\d)/, "");
@@ -72,23 +79,24 @@ const sortAthletes = (athletes: AthleteV1Response[]) => athletes.sort((left, rig
 	compareId(left.id, right.id)
 );
 
-export const fetchAthletes = createAsyncThunk<AthleteV1Response[], void, {
+export const fetchAthletes = createAsyncThunk<{athletes: AthleteV1Response[]; total: number; args: AthleteListArgs}, AthleteListArgs | void, {
 	rejectValue: ApiFailure;
 	state: StateWithSession;
-}>("athlete/list", async (_unused, {getState, rejectWithValue}) => {
+}>("athlete/list", async (input, {getState, rejectWithValue}) => {
 	const {token, sessionVersion} = getState().userTokenReducer;
 	if (!token) return rejectWithValue({kind: "unauthorized"});
 	try {
-		const response = await service.getAthletesV1();
+		const args: AthleteListArgs = input ?? {status: "active", limit: 50, offset: 0};
+		const response = await service.getAthletesV1({status: args.status, q: args.q, limit: args.limit ?? 50, offset: args.offset ?? 0});
 		const session = getState().userTokenReducer;
 		if (session.token !== token || session.sessionVersion !== sessionVersion) return rejectWithValue({kind: "superseded"});
-		return response.athletes;
+		return {athletes: response.athletes, total: response.total, args};
 	} catch (error) {
 		const session = getState().userTokenReducer;
 		if (session.token !== token || session.sessionVersion !== sessionVersion) return rejectWithValue({kind: "superseded"});
 		return rejectWithValue(toApiFailure(error));
 	}
-}, {condition: (_unused, {getState}) => !getState().athleteReducer.loading});
+});
 
 export const createAthlete = createAsyncThunk<AthleteV1Response, CreateAthleteArgs, {
 	rejectValue: ApiFailure;
@@ -161,6 +169,14 @@ export const updateAthlete = createAsyncThunk<AthleteV1Response, UpdateProfileAr
 		state.userTokenReducer.token !== null && state.userTokenReducer.sessionVersion === sessionVersion;
 }});
 
+export const setAthleteArchived = createAsyncThunk<AthleteV1Response, ArchiveArgs, {rejectValue: ApiFailure; state: StateWithSession}>("athlete/archive", async ({id, archived, sessionVersion}, {getState, rejectWithValue}) => {
+ const {token, sessionVersion: currentVersion} = getState().userTokenReducer;
+ if (!token) return rejectWithValue({kind: "unauthorized"});
+ if (sessionVersion !== currentVersion) return rejectWithValue({kind: "superseded"});
+ try { const athlete = await service.setAthleteArchivedV1(id, archived); if (getState().userTokenReducer.sessionVersion !== sessionVersion) return rejectWithValue({kind: "superseded"}); return athlete; }
+ catch (error) { return rejectWithValue(toApiFailure(error)); }
+});
+
 export const athleteSlice = createSlice({
 	name: "athlete",
 	initialState,
@@ -175,6 +191,10 @@ export const athleteSlice = createSlice({
 		},
 		clearAthleteState: state => {
 			state.athletes = [];
+			state.total = 0;
+			state.listStatus = "active";
+			state.listQuery = "";
+			state.listOffset = 0;
 			state.loading = false;
 			state.saving = false;
 			state.loaded = false;
@@ -200,6 +220,12 @@ export const athleteSlice = createSlice({
 	},
 	extraReducers: builder => {
 		builder.addCase(fetchAthletes.pending, (state, action) => {
+			const args = action.meta.arg ?? {status: "active" as const, limit: 50, offset: 0};
+			state.listStatus = args.status;
+			state.listQuery = args.q ?? "";
+			state.listOffset = args.offset ?? 0;
+			state.athletes = [];
+			state.total = 0;
 			state.loading = true;
 			state.listErrorKind = undefined;
 			state.activeListRequestId = action.meta.requestId;
@@ -208,7 +234,11 @@ export const athleteSlice = createSlice({
 			if (state.activeListRequestId !== action.meta.requestId) return;
 			state.loading = false;
 			state.loaded = true;
-			state.athletes = action.payload;
+			state.athletes = action.payload.athletes;
+			state.total = action.payload.total;
+			state.listStatus = action.payload.args.status;
+			state.listQuery = action.payload.args.q ?? "";
+			state.listOffset = action.payload.args.offset ?? 0;
 			state.listErrorKind = undefined;
 			state.activeListRequestId = undefined;
 		});
@@ -217,6 +247,17 @@ export const athleteSlice = createSlice({
 			state.loading = false;
 			state.listErrorKind = action.payload?.kind === "superseded" ? undefined : action.payload?.kind ?? "service";
 			state.activeListRequestId = undefined;
+		});
+		builder.addCase(setAthleteArchived.fulfilled, (state, action) => {
+			if (state.profileId === action.payload.id) state.profile = action.payload;
+			const sourceStatus = action.meta.arg.archived ? "active" : "archived";
+			if (state.listStatus === sourceStatus) {
+				state.athletes = state.athletes.filter(item => item.id !== action.payload.id);
+				state.total = Math.max(0, state.total - 1);
+				const pageSize = 50;
+				const lastValidOffset = Math.floor(Math.max(0, state.total - 1) / pageSize) * pageSize;
+				if (state.listOffset > lastValidOffset) state.listOffset = lastValidOffset;
+			}
 		});
 		builder.addCase(createAthlete.pending, (state, action) => {
 			state.saving = true;
@@ -321,6 +362,10 @@ export const athleteSlice = createSlice({
 		builder.addMatcher((action): action is PayloadAction =>
 			["user/logout/pending", "user/logout/fulfilled", "user/token/pending", "user/token/fulfilled"].includes(action.type), state => {
 			state.athletes = [];
+			state.total = 0;
+			state.listStatus = "active";
+			state.listQuery = "";
+			state.listOffset = 0;
 			state.loading = false;
 			state.saving = false;
 			state.loaded = false;

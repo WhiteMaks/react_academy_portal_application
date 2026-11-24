@@ -131,15 +131,15 @@ class AcademyPortalService {
 		}
 	}
 
-	public async getAthletesV1(): Promise<GetAthletesV1Response> {
-		const response = await this.fetchAthletes("GET");
+	public async getAthletesV1(options: {status: "active" | "archived"; q?: string; limit: number; offset: number} = {status: "active", limit: 50, offset: 0}): Promise<GetAthletesV1Response> {
+		const response = await this.fetchAthletes("GET", undefined, options);
 		if (response.status === 401) throw new ApiError("unauthorized", response.status);
 		if (response.status === 403) throw new ApiError("forbidden", response.status);
 		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
 
 		try {
 			const data: unknown = await response.json();
-			if (!this.isRecord(data) || !Array.isArray(data.athletes)) {
+			if (!this.isRecord(data) || !Array.isArray(data.athletes) || !Number.isSafeInteger(data.total) || !Number.isSafeInteger(data.limit) || !Number.isSafeInteger(data.offset)) {
 				throw new ApiError("service", response.status);
 			}
 			const athletes: AthleteV1Response[] = [];
@@ -148,7 +148,7 @@ class AcademyPortalService {
 				if (!athlete) throw new ApiError("service", response.status);
 				athletes.push(athlete);
 			}
-			return {athletes};
+			return {athletes, total: data.total as number, limit: data.limit as number, offset: data.offset as number};
 		} catch {
 			throw new ApiError("service", response.status);
 		}
@@ -170,6 +170,21 @@ class AcademyPortalService {
 		} catch {
 			throw new ApiError("service", response.status);
 		}
+	}
+
+	public async setAthleteArchivedV1(id: string, archived: boolean): Promise<AthleteV1Response> {
+		if (!/^[1-9]\d*$/.test(id)) throw new ApiError("request");
+		const url = this.host + this.ATHLETE + "/" + id + (archived ? "/archive" : "/restore") + this.V1;
+		let response: Response;
+		try { response = await fetch(url, {method: "POST", headers: this.generateHeaders()}); }
+		catch { throw new ApiError("service"); }
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (response.status === 409) throw new ApiError("conflict", response.status);
+		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+		try { const athlete = this.parseAthleteResponse(await response.json()); if (!athlete) throw new ApiError("service", response.status); return athlete; }
+		catch { throw new ApiError("service", response.status); }
 	}
 
 	public async getAthleteV1(id: string): Promise<AthleteV1Response> {
@@ -246,8 +261,10 @@ class AcademyPortalService {
 		return token ? {"Authorization": `Bearer ${token}`} : {};
 	}
 
-	private async fetchAthletes(method: "GET" | "POST", request?: PostAthleteV1Request): Promise<Response> {
-		const url = this.host + this.ATHLETE_V1;
+	private async fetchAthletes(method: "GET" | "POST", request?: PostAthleteV1Request, options?: {status: "active" | "archived"; q?: string; limit: number; offset: number}): Promise<Response> {
+		const query = new URLSearchParams();
+		if (method === "GET" && options) { query.set("status", options.status); if (options.q) query.set("q", options.q); query.set("limit", String(options.limit)); query.set("offset", String(options.offset)); }
+		const url = this.host + this.ATHLETE_V1 + (query.size ? `?${query.toString()}` : "");
 		let body: string | undefined;
 		if (request) {
 			const birthDate = formatBirthDateWire(request.birthDate);

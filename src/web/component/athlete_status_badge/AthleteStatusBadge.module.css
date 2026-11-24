@@ -14,7 +14,7 @@
 }
 
 .active { background: #e8f3eb; color: #245c42; }
-.inactive { background: #f1f2f3; color: #5e6670; }
+.inactive { background: #eee8e4; color: #625b63; }
 .dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; transform: translateY(-1px); }
 .active .dot { background: #38865b; }
-.inactive .dot { background: #7c858e; }
+.inactive .dot { background: #625b63; border-radius: 1px; }
