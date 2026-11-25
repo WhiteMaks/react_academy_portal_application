@@ -5,68 +5,115 @@
 	align-items: center;
 	justify-content: center;
 	padding: 32px 20px;
-	background: var(--mvp-canvas);
+	background: var(--paper);
+}
+
+.page *,
+.page *::before,
+.page *::after {
+	box-sizing: border-box;
 }
 
 .card {
-	box-sizing: border-box;
-	width: min(452px, 100%);
-	padding: 38px 56px;
-	border: 1px solid var(--mvp-border);
-	border-radius: var(--ui-control-radius);
-	background: var(--mvp-surface);
-	color: var(--mvp-text);
-	box-shadow: 0 10px 28px rgb(52 43 51 / 7%);
+	width: min(440px, 100%);
+	padding: 36px 40px 32px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	background: var(--card);
+	color: var(--ink);
+	box-shadow: var(--shadow);
 }
 
-.logo {
-	display: block;
-	width: 132px;
-	height: 22px;
-	margin: 0 0 24px;
+.eyebrow {
+	margin: 0 0 8px;
+	color: var(--gold-deep);
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
 }
 
 .card h1 {
-	margin: 0 0 12px;
-	color: var(--mvp-text);
-	font-size: 28px;
-	font-weight: 600;
+	margin: 0 0 8px;
+	font-size: 26px;
 	line-height: 1.2;
+	letter-spacing: -0.02em;
+	font-weight: 600;
 }
 
-.description {
-	margin: 0 0 24px;
-	color: var(--mvp-muted);
-	font-size: 16px;
+.lead {
+	margin: 0 0 22px;
+	color: var(--muted);
+	font-size: 14px;
 	line-height: 1.45;
 }
 
-@media (max-width: 480px) {
-	.page {
-		padding: 24px 20px;
-	}
+.footnote {
+	margin: 18px 0 0;
+	color: var(--muted);
+	font-size: 12px;
+	line-height: 1.4;
+}
 
+.footnote code {
+	font-size: 11px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.stack {
+	display: grid;
+	gap: 14px;
+}
+
+.status {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding: 8px 0 4px;
+	text-align: center;
+}
+
+.statusText {
+	margin: 0;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.45;
+}
+
+.spinner {
+	width: 36px;
+	height: 36px;
+	border: 3px solid var(--line);
+	border-top-color: var(--gold);
+	border-radius: 50%;
+	animation: auth-spin 0.75s linear infinite;
+}
+
+@keyframes auth-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (max-width: 700px) {
+	.page {
+		padding: 24px 16px;
+	}
+}
+
+@media (max-width: 480px) {
 	.card {
-		padding: 28px 24px;
+		padding: 28px 22px;
 	}
 
 	.card h1 {
-		font-size: 25px;
+		font-size: 23px;
 	}
 }
 
 @media (max-height: 700px) {
 	.page {
 		align-items: flex-start;
-	}
-}
-
-@media (max-width: 374px) {
-	.page {
-		padding: 20px;
-	}
-
-	.card {
-		padding: 24px 20px;
 	}
 }

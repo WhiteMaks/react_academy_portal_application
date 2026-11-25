@@ -1,6 +1,6 @@
 import React, {FC, FormEvent, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {ApiFailure} from "../../api/ApiError";
+import {toApiFailure} from "../../api/ApiError";
 import {createInitialAdmin} from "../../data/state/user/AdminBootstrapReducer";
 import {fetchUser} from "../../data/state/user/UserReducer";
 import {fetchUserToken} from "../../data/state/user/UserTokenReducer";
@@ -11,7 +11,6 @@ import TextField from "../component/common/text_field/TextField";
 import AuthFormLayout from "../component/common/auth_form/AuthFormLayout";
 import FormStack from "../component/common/form_stack/FormStack";
 import FormMessage from "../component/common/form_message/FormMessage";
-import style from "./AdminBootstrapPage.module.css";
 
 interface FieldErrors {
 	username?: string;
@@ -21,14 +20,6 @@ interface FieldErrors {
 const isValidUsername = (value: string): boolean => /^[A-Za-z0-9]{5,64}$/.test(value);
 const isValidPassword = (value: string): boolean => value.length >= 8 && value.length <= 64;
 
-const failureFrom = (error: unknown): ApiFailure => {
-	if (typeof error === "object" && error !== null && "kind" in error &&
-		typeof error.kind === "string") {
-		const failure = error as ApiFailure;
-		return failure;
-	}
-	return {kind: "service"};
-};
 
 const AdminBootstrapPage: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -86,87 +77,88 @@ const AdminBootstrapPage: FC = () => {
 				}
 				goToLogin("Администратор создан. Войдите, чтобы продолжить.", username, true);
 			} catch (error) {
-				const failure = failureFrom(error);
+				const failure = toApiFailure(error);
 				if (failure.kind === "service") {
-					// The stored token is retained for the existing session-check retry flow.
 					return;
 				}
 				goToLogin("Администратор создан. Войдите, чтобы продолжить.", username, true);
 			}
 		} catch (error) {
-			const failure = failureFrom(error);
+			const failure = toApiFailure(error);
 			if (failure.status === 404) {
-				goToLogin("Первичная настройка уже выполнена. Войдите в аккаунт.", username, true);
+				goToLogin("Первичная настройка уже выполнена. Войдите в панель администратора.", username, true);
 				return;
 			}
 			if (failure.status === 409) {
 				setPassword("");
-				setFieldErrors({username: "Это имя пользователя уже занято. Выберите другое."});
+				setFieldErrors({username: "Имя пользователя уже занято"});
 				return;
 			}
 			if (failure.status === 400) {
 				setPassword("");
-				setRequestMessage("Проверьте имя пользователя и пароль и попробуйте ещё раз.");
+				setRequestMessage("Проверьте имя пользователя и пароль. Имя: 5–64 символа, латиница и цифры; пароль: 8–64 символа.");
 				return;
 			}
 			setPassword("");
-			setRequestMessage("Сервис временно недоступен. Повторите попытку.");
+			setRequestMessage("Сервис временно недоступен. Попробуйте ещё раз.");
 		} finally {
 			setCheckingAccess(false);
 		}
 	};
 
-	const errorMessage = requestMessage ?? (fieldErrors.username || fieldErrors.password
-		? "Проверьте поля формы."
-		: undefined);
-
 	return (
-		<AuthFormLayout ariaLabelledBy="bootstrap-title" title="Создайте администратора">
-				{errorMessage && (
-					<FormMessage id="bootstrap-error">{errorMessage}</FormMessage>
-				)}
-				<FormStack className={style.form} onSubmit={handleSubmit} noValidate>
-					<TextField
-						id="bootstrap-username"
-						name="username"
-						label="Создайте имя пользователя"
-						placeholder="Имя пользователя"
-						autoComplete="username"
-						value={username}
-						onChange={event => {
-							setUsername(event.target.value);
-							setFieldErrors(current => ({...current, username: undefined}));
-							setRequestMessage(undefined);
-						}}
-						required
-						maxLength={64}
-						invalid={Boolean(fieldErrors.username)}
-						describedBy={fieldErrors.username ? "bootstrap-username-error" : errorMessage ? "bootstrap-error" : undefined}
-					/>
-					{fieldErrors.username && <p id="bootstrap-username-error" className={style.fieldError}>{fieldErrors.username}</p>}
-					<TextField
-						id="bootstrap-password"
-						name="password"
-						label="Создайте пароль"
-						placeholder="Пароль"
-						type="password"
-						autoComplete="new-password"
-						value={password}
-						onChange={event => {
-							setPassword(event.target.value);
-							setFieldErrors(current => ({...current, password: undefined}));
-							setRequestMessage(undefined);
-						}}
-						required
-						maxLength={64}
-						invalid={Boolean(fieldErrors.password)}
-						describedBy={fieldErrors.password ? "bootstrap-password-error" : errorMessage ? "bootstrap-error" : undefined}
-					/>
-					{fieldErrors.password && <p id="bootstrap-password-error" className={style.fieldError}>{fieldErrors.password}</p>}
-					<Button className={style.submit} type="submit" fullWidth disabled={busy}>
-						{checkingAccess ? "Входим…" : busy ? "Создаём…" : "Создать администратора"}
-					</Button>
-				</FormStack>
+		<AuthFormLayout
+			ariaLabelledBy="bootstrap-title"
+			eyebrow="Первичная настройка"
+			title="Создайте администратора"
+			lead="Выполняется один раз. Задайте учётную запись главного администратора клуба."
+			footnote="После создания вы войдёте в панель. Повторная регистрация администратора недоступна."
+		>
+			{requestMessage && (
+				<FormMessage id="bootstrap-error">{requestMessage}</FormMessage>
+			)}
+			<FormStack onSubmit={handleSubmit} noValidate>
+				<TextField
+					id="bootstrap-username"
+					name="username"
+					label="Имя пользователя"
+					placeholder="5–64 символа, латиница и цифры"
+					autoComplete="username"
+					value={username}
+					onChange={event => {
+						setUsername(event.target.value);
+						setFieldErrors(current => ({...current, username: undefined}));
+						setRequestMessage(undefined);
+					}}
+					required
+					maxLength={64}
+					invalid={Boolean(fieldErrors.username)}
+					error={fieldErrors.username}
+					describedBy={requestMessage ? "bootstrap-error" : undefined}
+				/>
+				<TextField
+					id="bootstrap-password"
+					name="password"
+					label="Пароль"
+					placeholder="Не менее 8 символов"
+					type="password"
+					autoComplete="new-password"
+					value={password}
+					onChange={event => {
+						setPassword(event.target.value);
+						setFieldErrors(current => ({...current, password: undefined}));
+						setRequestMessage(undefined);
+					}}
+					required
+					maxLength={64}
+					invalid={Boolean(fieldErrors.password)}
+					error={fieldErrors.password}
+					describedBy={requestMessage ? "bootstrap-error" : undefined}
+				/>
+				<Button variant="gold" type="submit" fullWidth disabled={busy}>
+					{checkingAccess ? "Входим…" : busy ? "Создаём…" : "Создать администратора"}
+				</Button>
+			</FormStack>
 		</AuthFormLayout>
 	);
 };

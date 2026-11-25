@@ -1,20 +1,21 @@
 .message {
-	margin: 0 0 20px;
-	padding: var(--ui-alert-padding);
-	border: 1px solid;
-	border-radius: var(--ui-alert-radius);
-	font-size: 14px;
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	border-radius: var(--radius-md);
+	font-size: 13px;
 	line-height: 1.45;
+	border: 1px solid var(--line);
 }
 
 .error {
-	border-color: var(--mvp-error-border);
-	background: var(--mvp-error-bg);
-	color: var(--mvp-error);
+	border-color: var(--alert-error-border);
+	background: var(--alert-error-bg);
+	color: var(--red);
+	font-weight: 500;
 }
 
 .notice {
-	border-color: var(--mvp-border);
-	background: var(--mvp-canvas);
-	color: var(--mvp-text);
+	border-color: var(--alert-notice-border);
+	background: var(--alert-notice-bg);
+	color: var(--alert-notice-text);
 }

@@ -6,10 +6,19 @@ import {ApiError} from "./ApiError";
 import PostUserV1Request from "./models/user/PostUserV1Request";
 import PostUserV1Response from "./models/user/PostUserV1Response";
 import GetAthletesV1Response from "./models/athlete/GetAthletesV1Response";
+import ATHLETE_PAGE_SIZE from "./models/athlete/athletePageSize";
 import AthleteV1Response from "./models/athlete/AthleteV1Response";
 import PostAthleteV1Request from "./models/athlete/PostAthleteV1Request";
 import PutAthleteV1Request from "./models/athlete/PutAthleteV1Request";
 import {formatBirthDateWire, parseBirthDateWire} from "./models/athlete/birthDate";
+import GetGroupsV1Response from "./models/group/GetGroupsV1Response";
+import GetGroupV1Response from "./models/group/GetGroupV1Response";
+import GroupV1Response from "./models/group/GroupV1Response";
+import GroupAthleteV1Response from "./models/group/GroupAthleteV1Response";
+import PostGroupV1Request from "./models/group/PostGroupV1Request";
+import PutGroupV1Request from "./models/group/PutGroupV1Request";
+import PutGroupAthleteV1Request from "./models/group/PutGroupAthleteV1Request";
+import PutGroupAthleteV1Response from "./models/group/PutGroupAthleteV1Response";
 
 class AcademyPortalService {
 	private static instance: AcademyPortalService | null = null;
@@ -30,6 +39,8 @@ class AcademyPortalService {
 	private readonly USER_ADMIN_V1: string = this.USER_ADMIN + this.V1;
 	private readonly ATHLETE: string = this.API + "/athlete";
 	private readonly ATHLETE_V1: string = this.ATHLETE + this.V1;
+	private readonly GROUP: string = this.API + "/group";
+	private readonly GROUP_V1: string = this.GROUP + this.V1;
 
 	private constructor(host: string) {
 		this.host = host;
@@ -131,7 +142,7 @@ class AcademyPortalService {
 		}
 	}
 
-	public async getAthletesV1(options: {status: "active" | "archived"; q?: string; limit: number; offset: number; isCoach?: boolean} = {status: "active", limit: 50, offset: 0}): Promise<GetAthletesV1Response> {
+	public async getAthletesV1(options: {status: "active" | "archived"; q?: string; limit: number; offset: number; isCoach?: boolean} = {status: "active", limit: ATHLETE_PAGE_SIZE, offset: 0}): Promise<GetAthletesV1Response> {
 		const response = await this.fetchAthletes("GET", undefined, options);
 		if (response.status === 401) throw new ApiError("unauthorized", response.status);
 		if (response.status === 403) throw new ApiError("forbidden", response.status);
@@ -152,6 +163,78 @@ class AcademyPortalService {
 		} catch {
 			throw new ApiError("service", response.status);
 		}
+	}
+
+	public async getGroupsV1(): Promise<GetGroupsV1Response> {
+		const response = await this.fetchGroup("GET", this.GROUP_V1);
+		this.handleGroupError(response);
+		if (response.status !== 200) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isRecord(data) || !Array.isArray(data.groups)) throw new ApiError("service", response.status);
+			const groups: GroupV1Response[] = [];
+			for (const item of data.groups) {
+				const group = this.parseGroup(item);
+				if (!group) throw new ApiError("service", response.status);
+				groups.push(group);
+			}
+			return {groups};
+		} catch { throw new ApiError("service", response.status); }
+	}
+
+	public async getGroupV1(id: string): Promise<GetGroupV1Response> {
+		this.validateGroupId(id);
+		const response = await this.fetchGroup("GET", `${this.GROUP}/${id}${this.V1}`);
+		this.handleGroupError(response);
+		if (response.status !== 200) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isRecord(data) || data.id !== id || typeof data.name !== "string" || !Number.isSafeInteger(data.memberCount) || (data.memberCount as number) < 0 || !Array.isArray(data.athletes)) throw new ApiError("service", response.status);
+			const athletes: GroupAthleteV1Response[] = [];
+			for (const item of data.athletes) {
+				const athlete = this.parseGroupAthlete(item);
+				if (!athlete) throw new ApiError("service", response.status);
+				athletes.push(athlete);
+			}
+			if (data.memberCount !== athletes.length) throw new ApiError("service", response.status);
+			return {id, name: data.name, memberCount: data.memberCount as number, athletes};
+		} catch { throw new ApiError("service", response.status); }
+	}
+
+	public async postGroupV1(request: PostGroupV1Request): Promise<GroupV1Response> {
+		const response = await this.fetchGroup("POST", this.GROUP_V1, request);
+		this.handleGroupError(response);
+		if (response.status !== 201) throw new ApiError("service", response.status);
+		try {
+			const group = this.parseGroup(await response.json());
+			if (!group || group.name !== request.name.trim() || group.memberCount !== 0) throw new ApiError("service", response.status);
+			return group;
+		} catch { throw new ApiError("service", response.status); }
+	}
+
+	public async putGroupV1(id: string, request: PutGroupV1Request): Promise<GroupV1Response> {
+		this.validateGroupId(id);
+		const response = await this.fetchGroup("PUT", `${this.GROUP}/${id}${this.V1}`, request);
+		this.handleGroupError(response);
+		if (response.status !== 200) throw new ApiError("service", response.status);
+		try {
+			const group = this.parseGroup(await response.json());
+			if (!group || group.id !== id || group.name !== request.name.trim()) throw new ApiError("service", response.status);
+			return group;
+		} catch { throw new ApiError("service", response.status); }
+	}
+
+	public async putGroupAthleteV1(groupId: string, athleteId: string, request: PutGroupAthleteV1Request): Promise<PutGroupAthleteV1Response> {
+		this.validateGroupId(groupId);
+		if (!/^[1-9]\d*$/.test(athleteId)) throw new ApiError("request");
+		const response = await this.fetchGroup("PUT", `${this.GROUP}/${groupId}/athlete/${athleteId}${this.V1}`, request);
+		this.handleGroupError(response);
+		if (response.status !== 200) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isRecord(data) || data.groupId !== groupId || data.athleteId !== athleteId || data.isMember !== request.isMember) throw new ApiError("service", response.status);
+			return {groupId, athleteId, isMember: request.isMember};
+		} catch { throw new ApiError("service", response.status); }
 	}
 
 	public async setAthleteCoachV1(id: string, isCoach: boolean): Promise<AthleteV1Response> {
@@ -273,6 +356,43 @@ class AcademyPortalService {
 	private generateHeaders(): Record<string, string> {
 		const token = localStorage.getItem("token");
 		return token ? {"Authorization": `Bearer ${token}`} : {};
+	}
+
+	private async fetchGroup(method: "GET" | "POST" | "PUT", url: string, body?: object): Promise<Response> {
+		try {
+			return await fetch(this.host + url, {
+				method,
+				headers: body ? {...this.generateHeaders(), "Content-Type": "application/json"} : this.generateHeaders(),
+				...(body ? {body: JSON.stringify(body)} : {})
+			});
+		} catch { throw new ApiError("service"); }
+	}
+
+	private handleGroupError(response: Response): void {
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (response.status === 409) throw new ApiError("conflict", response.status);
+		if (response.status === 400) throw new ApiError("request", response.status);
+		if (!response.ok) throw new ApiError(response.status >= 500 ? "service" : "request", response.status);
+	}
+
+	private validateGroupId(id: string): void {
+		if (!/^[1-9]\d*$/.test(id)) throw new ApiError("request");
+	}
+
+	private parseGroup(value: unknown): GroupV1Response | null {
+		if (!this.isRecord(value) || typeof value.id !== "string" || !/^[1-9]\d*$/.test(value.id) ||
+			typeof value.name !== "string" || !Number.isSafeInteger(value.memberCount) || (value.memberCount as number) < 0) return null;
+		return {id: value.id, name: value.name, memberCount: value.memberCount as number};
+	}
+
+	private parseGroupAthlete(value: unknown): GroupAthleteV1Response | null {
+		if (!this.isRecord(value) || typeof value.id !== "string" || !/^[1-9]\d*$/.test(value.id) ||
+			typeof value.secondName !== "string" || typeof value.firstName !== "string" ||
+			!(value.middleName === null || typeof value.middleName === "string") || typeof value.birthDate !== "string" ||
+			!parseBirthDateWire(value.birthDate)) return null;
+		return {id: value.id, secondName: value.secondName, firstName: value.firstName, middleName: value.middleName, birthDate: value.birthDate};
 	}
 
 	private async fetchAthletes(method: "GET" | "POST", request?: PostAthleteV1Request, options?: {status: "active" | "archived"; q?: string; limit: number; offset: number; isCoach?: boolean}): Promise<Response> {

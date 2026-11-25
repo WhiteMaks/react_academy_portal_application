@@ -1,28 +1,5 @@
-.brandCaption {
-	margin: -12px 0 20px;
-	color: var(--mvp-muted);
-	font-size: 12px;
-	font-weight: 600;
-	letter-spacing: 0.07em;
-}
-
-.form {
-	margin-top: 4px;
-}
-
-.loginSubmit {
-	margin-top: 2px;
-}
-
 .sessionActions {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	margin: -8px 0 20px;
-}
-
-.accessNote {
-	margin: 18px 0 0;
-	color: var(--mvp-muted);
-	font-size: 13px;
+	display: grid;
+	gap: 14px;
+	margin-bottom: 4px;
 }

@@ -1,61 +1,65 @@
+/*
+ * Design tokens — design/tokens/variables.css (source of truth).
+ */
 :root {
-    --color-grey-dark: #3B545B;
-    --color-white: #FFFFFF;
-    --color-black: #1A1919;
-    --color-brown-light: #B1A192;
-    --color-brown-light-hover: #C7BBB0;
-    --color-brown-light-active: #AA9A8B;
+	--ink: #171817;
+	--ink-2: #242622;
+	--gold: #c6a45b;
+	--gold-2: #e4ca8a;
+	--gold-muted: #c7b27d;
+	--gold-deep: #9a7b3c;
+	--paper: #f5f4f0;
+	--card: #fff;
+	--on-primary: #fff;
+	--muted: #77796f;
+	--line: #e9e7df;
+	--green: #24845a;
+	--red: #c45b50;
+	--blue: #53758c;
+	--link-gold: #8b6d32;
+	--shadow: 0 12px 32px rgba(27, 27, 22, 0.07);
+	--radius-sm: 8px;
+	--radius-md: 9px;
+	--radius-lg: 13px;
+	--font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--alert-error-bg: #f7e8e6;
+	--alert-error-border: #e6c1bc;
+	--alert-notice-bg: #f4eddd;
+	--alert-notice-border: #dfc990;
+	--alert-notice-text: #8a6a2d;
+	--alert-info-bg: #e8eef3;
+	--alert-info-border: #c5d4e0;
+	--alert-info-text: var(--blue);
+	--alert-success-bg: #e6f2ec;
+	--alert-success-border: #b8d9c8;
+	--alert-success-text: var(--green);
+	--focus-ring: 0 0 0 3px rgba(198, 164, 91, 0.25);
+	--focus-ring-error: 0 0 0 3px rgba(196, 91, 80, 0.22);
+}
 
-    --mvp-canvas: #F7F4F1;
-    --mvp-surface: #FFFFFF;
-    --mvp-border: #D9D1CC;
-    --mvp-field-border: #8C827B;
-    --mvp-outline: #847A73;
-    --mvp-text: #342B33;
-    --mvp-muted: #625B63;
-    --mvp-primary: #4C3F4F;
-    --mvp-error: #8C2F3E;
-    --mvp-error-border: #A34754;
-    --mvp-error-bg: #FFF0F2;
-    --mvp-focus: #2857A4;
-    --mvp-field-hover-ring: rgba(76, 63, 79, 0.14);
-    --mvp-field-focus-ring: rgba(76, 63, 79, 0.26);
-    --mvp-field-error-ring: rgba(140, 47, 62, 0.22);
-
-    /* Shared UI geometry tokens: update common consumers through one source. */
-    --ui-control-height: 48px;
-    --ui-control-radius: 8px;
-    --ui-control-inline-padding: 12px;
-    --ui-field-label-gap: 8px;
-    --ui-form-gap: 18px;
-    --ui-alert-padding: 12px;
-    --ui-alert-radius: 8px;
+html {
+	font: var(--font);
+	color: var(--ink);
+	-webkit-text-size-adjust: 100%;
 }
 
 body {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-
-    margin: 0;
-    background-color: #DEDEDE;
-    font-family: 'Lato', sans-serif;
-    font-weight: 400;
-    color: var(--color-black);
-    font-size: 16px;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	margin: 0;
+	background-color: var(--paper);
+	font: inherit;
+	color: inherit;
 }
 
-.home_page {
-    display: flex;
-    position: fixed;
-    width: 100%;
-    height: 100%;
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
 }
 
-@media (max-width: 767px) {
-	.home_page {
-		position: relative;
-		min-height: 100dvh;
-		height: 100dvh;
-		flex-direction: column;
-	}
+a {
+	color: inherit;
 }

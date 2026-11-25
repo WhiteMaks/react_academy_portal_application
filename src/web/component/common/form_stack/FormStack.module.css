@@ -1,5 +1,4 @@
 .form {
-	display: flex;
-	flex-direction: column;
-	gap: var(--ui-form-gap);
+	display: grid;
+	gap: 14px;
 }

@@ -1,7 +1,7 @@
 import React, {FC, FormEvent, useState} from "react";
 import {Navigate, useLocation, useNavigate} from "react-router-dom";
 import {Location} from "react-router";
-import {ApiErrorKind} from "../../api/ApiError";
+import {ApiErrorKind, toApiFailure} from "../../api/ApiError";
 import {fetchUser, userActions} from "../../data/state/user/UserReducer";
 import {fetchUserToken, logoutUser} from "../../data/state/user/UserTokenReducer";
 import {useGlobalDispatch, useGlobalSelector} from "../../data/state/store";
@@ -13,12 +13,12 @@ import FormMessage from "../component/common/form_message/FormMessage";
 import style from "./LoginPage.module.css";
 
 const errorMessages: Record<ApiErrorKind, string> = {
-	credentials: "Неверное имя пользователя или пароль.",
+	credentials: "Неверное имя пользователя или пароль",
 	unauthorized: "Сессия завершилась. Войдите снова.",
-	forbidden: "Доступ в рабочее место разрешён только администратору.",
+	forbidden: "Доступ только для администратора клуба.",
 	notFound: "Запрошенные данные не найдены.",
 	conflict: "Данные изменились. Обновите карточку и повторите попытку.",
-	service: "Сервис временно недоступен. Попробуйте ещё раз позже.",
+	service: "Сервис временно недоступен. Попробуйте ещё раз.",
 	request: "Не удалось обработать запрос. Проверьте введённые данные.",
 	superseded: "Сессия завершена. Войдите снова."
 };
@@ -73,8 +73,7 @@ const LoginPage: FC = () => {
 				navigate("/", {replace: true});
 			}
 		} catch (error) {
-			const failure = error as {kind?: ApiErrorKind};
-			const kind = failure.kind ?? "service";
+			const {kind} = toApiFailure(error);
 			if (kind !== "service") setPassword("");
 			setRequestError(kind);
 		} finally {
@@ -89,8 +88,7 @@ const LoginPage: FC = () => {
 			await dispatch(fetchUser()).unwrap();
 			navigate("/", {replace: true});
 		} catch (error) {
-			const failure = error as {kind?: ApiErrorKind};
-			setRequestError(failure.kind ?? "service");
+			setRequestError(toApiFailure(error).kind);
 		}
 	};
 
@@ -102,64 +100,66 @@ const LoginPage: FC = () => {
 	return (
 		<AuthFormLayout
 			ariaLabelledBy="login-title"
-			title="Вход администратора"
-			description="Войдите, чтобы управлять списком спортсменов."
+			eyebrow="Панель администратора"
+			title="Вход"
+			lead="Войдите, чтобы управлять клубом: спортсмены, группы, расписание и оплаты."
+			footnote="Доступ только для администратора клуба."
 		>
-			<p className={style.brandCaption}>ПАНЕЛЬ АДМИНИСТРАТОРА</p>
-				{navigationState.notice && (
-					<FormMessage variant="notice">{navigationState.notice}</FormMessage>
-				)}
+			{navigationState.notice && (
+				<FormMessage variant="notice">{navigationState.notice}</FormMessage>
+			)}
 
-				{errorKind && (
-					<FormMessage id="login-error">{errorMessages[errorKind]}</FormMessage>
-				)}
+			{errorKind && (
+				<FormMessage id="login-error">{errorMessages[errorKind]}</FormMessage>
+			)}
 
-				{hasUnverifiedToken && (
-					<div className={style.sessionActions}>
-						<Button variant="secondary" type="button" onClick={retrySessionCheck} disabled={isBusy}>
-							Повторить проверку сессии
-						</Button>
-						<Button variant="text" type="button" onClick={handleLogout}>
-							Выйти
-						</Button>
-					</div>
-				)}
-
-				<FormStack className={style.form} onSubmit={handleSubmit}>
-					<TextField
-						id="username"
-						name="username"
-						label="Имя пользователя"
-						autoComplete="username"
-						required
-						value={username}
-						onChange={event => {
-							setUsername(event.target.value);
-							setRequestError(undefined);
-						}}
-						invalid={errorKind === "credentials"}
-						describedBy={errorKind ? "login-error" : undefined}
-					/>
-					<TextField
-						id="password"
-						name="password"
-						label="Пароль"
-						type="password"
-						autoComplete="current-password"
-						required
-						value={password}
-						onChange={event => {
-							setPassword(event.target.value);
-							setRequestError(undefined);
-						}}
-						invalid={errorKind === "credentials"}
-						describedBy={errorKind ? "login-error" : undefined}
-					/>
-					<Button className={style.loginSubmit} type="submit" disabled={isBusy || hasUnverifiedToken} fullWidth>
-						{checkingAccess ? "Проверяем доступ…" : isBusy ? "Входим…" : "Войти"}
+			{hasUnverifiedToken && (
+				<div className={style.sessionActions}>
+					<Button variant="gold" type="button" onClick={retrySessionCheck} disabled={isBusy} fullWidth>
+						Повторить
 					</Button>
-				</FormStack>
-				<p className={style.accessNote}>Доступ только для администратора.</p>
+					<Button variant="text" type="button" onClick={handleLogout}>
+						Выйти
+					</Button>
+				</div>
+			)}
+
+			<FormStack onSubmit={handleSubmit} noValidate>
+				<TextField
+					id="username"
+					name="username"
+					label="Имя пользователя"
+					placeholder="5–64 символа, латиница и цифры"
+					autoComplete="username"
+					required
+					value={username}
+					onChange={event => {
+						setUsername(event.target.value);
+						setRequestError(undefined);
+					}}
+					invalid={errorKind === "credentials"}
+					describedBy={errorKind ? "login-error" : undefined}
+				/>
+				<TextField
+					id="password"
+					name="password"
+					label="Пароль"
+					placeholder="Не менее 8 символов"
+					type="password"
+					autoComplete="current-password"
+					required
+					value={password}
+					onChange={event => {
+						setPassword(event.target.value);
+						setRequestError(undefined);
+					}}
+					invalid={errorKind === "credentials"}
+					describedBy={errorKind ? "login-error" : undefined}
+				/>
+				<Button variant="gold" type="submit" disabled={isBusy || hasUnverifiedToken} fullWidth>
+					{checkingAccess ? "Проверяем доступ…" : isBusy ? "Входим…" : "Войти"}
+				</Button>
+			</FormStack>
 		</AuthFormLayout>
 	);
 };

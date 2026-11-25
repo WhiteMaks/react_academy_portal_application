@@ -1,69 +1,57 @@
 .field {
-	display: flex;
+	display: grid;
+	gap: 5px;
 	min-width: 0;
-	flex-direction: column;
-	gap: var(--ui-field-label-gap);
 }
 
 .label {
-	color: var(--mvp-text);
-	font-size: 14px;
-	font-weight: 600;
-	line-height: 19px;
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--muted);
+	line-height: 1.3;
 }
 
 .control {
 	box-sizing: border-box;
 	width: 100%;
 	min-width: 0;
-	height: var(--ui-control-height);
 	margin: 0;
-	padding: 0 var(--ui-control-inline-padding);
-	border: 1px solid var(--mvp-field-border);
-	border-radius: var(--ui-control-radius);
-	background: var(--mvp-surface);
-	color: var(--mvp-text);
+	padding: 10px 11px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-md);
+	background: var(--card);
+	color: var(--ink);
 	font: inherit;
-	line-height: 19px;
+	outline: none;
 	transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .control::placeholder {
-	color: var(--mvp-muted);
+	color: var(--muted);
 	opacity: 1;
 }
 
 .control:hover:not(:disabled):not([aria-invalid="true"]) {
-	border-color: var(--mvp-primary);
-	box-shadow: 0 0 0 2px var(--mvp-field-hover-ring);
+	border-color: var(--gold);
+}
+
+.control:focus,
+.control:focus-visible {
+	border-color: var(--gold);
+	box-shadow: var(--focus-ring);
 }
 
 .control[aria-invalid="true"] {
-	border-color: var(--mvp-error-border);
-}
-
-.control:focus {
-	border-color: var(--mvp-primary);
-	outline: none;
-	box-shadow: 0 0 0 4px var(--mvp-field-focus-ring);
-}
-
-.control:focus-visible {
-	outline: 3px solid var(--mvp-focus);
-	outline-offset: 2px;
-	box-shadow: none;
-}
-
-.control[aria-invalid="true"]:hover,
-.control[aria-invalid="true"]:focus {
-	border-color: var(--mvp-error-border);
+	border-color: var(--red);
 }
 
 .control[aria-invalid="true"]:focus {
-	box-shadow: 0 0 0 4px var(--mvp-field-error-ring);
+	box-shadow: var(--focus-ring-error);
 }
 
-.control[aria-invalid="true"]:focus-visible {
-	outline-color: var(--mvp-error-border);
-	box-shadow: none;
+.error {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.35;
+	color: var(--red);
 }

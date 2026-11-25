@@ -1,19 +1,15 @@
 import React, {FC, useEffect, useRef} from "react";
 import {Navigate, Route, Routes} from "react-router-dom";
-import Block from "./component/common/block/Block";
-import Logout from "./component/navigation_panel/logout/Logout";
 import {fetchMicroservice} from "../data/state/microservice/MicroserviceReducer";
 import {fetchUser} from "../data/state/user/UserReducer";
 import {logoutUser} from "../data/state/user/UserTokenReducer";
 import {useGlobalDispatch, useGlobalSelector} from "../data/state/store";
 import HomePage from "./page/HomePage";
 import LoginPage from "./page/LoginPage";
+import LogoutPage from "./page/LogoutPage";
 import SessionCheckPage from "./page/SessionCheckPage";
 import AdminBootstrapPage from "./page/AdminBootstrapPage";
 import SectionPlaceholder from "./page/SectionPlaceholder";
-import AthletesPage from "./page/AthletesPage";
-import AthleteCreatePage from "./page/AthleteCreatePage";
-import AthleteProfilePage from "./page/AthleteProfilePage";
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -45,29 +41,46 @@ const Application: FC = () => {
 		(userState.loading || (!userState.loading && !userState.errorKind));
 
 	if (isRestoring) {
-		return <SessionCheckPage loading onRetry={() => dispatch(fetchUser())} onLogout={() => dispatch(logoutUser())}/>;
+		return (
+			<SessionCheckPage
+				layout="restoring"
+				loading
+				onRetry={() => dispatch(fetchUser())}
+				onLogout={() => dispatch(logoutUser())}
+			/>
+		);
 	}
 
 	if (tokenState.token !== null && userState.errorKind === "service") {
-		return <SessionCheckPage onRetry={() => dispatch(fetchUser())} onLogout={() => dispatch(logoutUser())}/>;
+		return (
+			<SessionCheckPage
+				layout="error"
+				errorCode="service"
+				onRetry={() => dispatch(fetchUser())}
+				onLogout={() => dispatch(logoutUser())}
+			/>
+		);
 	}
 
 	if (!hasAdminIdentity && tokenState.token === null) {
 		if (microserviceState.loading) {
-			return <SessionCheckPage
-				loading
-				title="Проверяем состояние сервиса…"
-				message="Проверяем, завершена ли первоначальная настройка."
-				onRetry={() => dispatch(fetchMicroservice())}
-			/>;
+			return (
+				<SessionCheckPage
+					layout="connecting"
+					loading
+					onRetry={() => dispatch(fetchMicroservice())}
+				/>
+			);
 		}
 		if (microserviceState.error || !microserviceState.service) {
-			return <SessionCheckPage
-				title="Не удалось проверить состояние сервиса"
-				message="Не получилось определить, завершена ли первичная настройка. Повторите проверку."
-				retryLabel="Повторить проверку"
-				onRetry={() => dispatch(fetchMicroservice())}
-			/>;
+			return (
+				<SessionCheckPage
+					layout="error"
+					errorCode="service"
+					retryLabel="Повторить"
+					onRetry={() => dispatch(fetchMicroservice())}
+				/>
+			);
 		}
 		if (microserviceState.service.readyToUse === false) {
 			return <AdminBootstrapPage/>;
@@ -79,25 +92,19 @@ const Application: FC = () => {
 			<Route index element={<SectionPlaceholder title="Сегодня" today/>}/>
 			<Route path="calendar" element={<SectionPlaceholder title="Тренировки"/>}/>
 			<Route path="payments" element={<SectionPlaceholder title="Оплата"/>}/>
-			<Route path="groups" element={<SectionPlaceholder title="Группы"/>}/>
-			<Route path="couches" element={<Navigate to="/coaches" replace/>}/>
-			<Route path="coaches" element={<AthletesPage isCoach/>}/>
-			<Route path="athletes" element={<AthletesPage/>}/>
-			<Route path="athletes/new" element={<AthleteCreatePage/>}/>
-			<Route path="athletes/:id/edit" element={<AthleteProfilePage editing/>}/>
-			<Route path="athletes/:id" element={<AthleteProfilePage/>}/>
+			<Route path="groups/*" element={<SectionPlaceholder title="Группы"/>}/>
+			<Route path="coaches/*" element={<SectionPlaceholder title="Тренеры"/>}/>
+			<Route path="athletes/*" element={<SectionPlaceholder title="Спортсмены"/>}/>
 			<Route path="*" element={<SectionPlaceholder notFound/>}/>
 		</Route>
 	);
 
 	return (
-		<Block className="application">
-			<Routes>
-				<Route path="/login" element={isAdmin ? <Navigate to="/" replace/> : <LoginPage/>}/>
-				<Route path="/logout" element={isAdmin ? <Logout/> : <Navigate to="/login" replace/>}/>
-				{renderContentRoutes()}
-			</Routes>
-		</Block>
+		<Routes>
+			<Route path="/login" element={isAdmin ? <Navigate to="/" replace/> : <LoginPage/>}/>
+			<Route path="/logout" element={isAdmin ? <LogoutPage/> : <Navigate to="/login" replace/>}/>
+			{renderContentRoutes()}
+		</Routes>
 	);
 };
 
