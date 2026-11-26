@@ -115,10 +115,11 @@ const AdminBootstrapPage: FC = () => {
 			footnote="После создания вы войдёте в панель. Повторная регистрация администратора недоступна."
 		>
 			{requestMessage && (
-				<FormMessage id="bootstrap-error">{requestMessage}</FormMessage>
+				<FormMessage id="bootstrap-error" useDesignKit>{requestMessage}</FormMessage>
 			)}
-			<FormStack onSubmit={handleSubmit} noValidate>
+			<FormStack onSubmit={handleSubmit} noValidate useDesignKit>
 				<TextField
+					useDesignKit
 					id="bootstrap-username"
 					name="username"
 					label="Имя пользователя"
@@ -137,6 +138,7 @@ const AdminBootstrapPage: FC = () => {
 					describedBy={requestMessage ? "bootstrap-error" : undefined}
 				/>
 				<TextField
+					useDesignKit
 					id="bootstrap-password"
 					name="password"
 					label="Пароль"
@@ -155,7 +157,7 @@ const AdminBootstrapPage: FC = () => {
 					error={fieldErrors.password}
 					describedBy={requestMessage ? "bootstrap-error" : undefined}
 				/>
-				<Button variant="gold" type="submit" fullWidth disabled={busy}>
+				<Button variant="gold" type="submit" fullWidth disabled={busy} useDesignKit>
 					{checkingAccess ? "Входим…" : busy ? "Создаём…" : "Создать администратора"}
 				</Button>
 			</FormStack>

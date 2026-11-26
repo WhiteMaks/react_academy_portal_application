@@ -134,28 +134,29 @@ const LoginPage: FC = () => {
 			footnote="Доступ только для администратора клуба."
 		>
 			{navigationState.notice && (
-				<FormMessage variant="notice">{navigationState.notice}</FormMessage>
+				<FormMessage variant="notice" useDesignKit>{navigationState.notice}</FormMessage>
 			)}
 
 			<div className={style.errorSlot} aria-live="assertive">
 				{errorKind ? (
-					<FormMessage id="login-error">{errorMessages[errorKind]}</FormMessage>
+					<FormMessage id="login-error" useDesignKit>{errorMessages[errorKind]}</FormMessage>
 				) : null}
 			</div>
 
 			{hasUnverifiedToken && (
 				<div className={style.sessionActions}>
-					<Button variant="gold" type="button" onClick={retrySessionCheck} disabled={profileLoading} fullWidth>
+					<Button variant="gold" type="button" onClick={retrySessionCheck} disabled={profileLoading} fullWidth useDesignKit>
 						Повторить
 					</Button>
-					<Button variant="text" type="button" onClick={handleLogout}>
+					<Button variant="text" type="button" onClick={handleLogout} useDesignKit>
 						Выйти
 					</Button>
 				</div>
 			)}
 
-			<FormStack onSubmit={handleSubmit} noValidate>
+			<FormStack onSubmit={handleSubmit} noValidate useDesignKit>
 				<TextField
+					useDesignKit
 					id="username"
 					name="username"
 					label="Имя пользователя"
@@ -171,6 +172,7 @@ const LoginPage: FC = () => {
 					describedBy={errorKind ? "login-error" : undefined}
 				/>
 				<TextField
+					useDesignKit
 					id="password"
 					name="password"
 					label="Пароль"
@@ -186,7 +188,7 @@ const LoginPage: FC = () => {
 					invalid={invalidCredentials}
 					describedBy={errorKind ? "login-error" : undefined}
 				/>
-				<Button variant="gold" type="submit" disabled={isBusy || hasUnverifiedToken} fullWidth>
+				<Button variant="gold" type="submit" disabled={isBusy || hasUnverifiedToken} fullWidth useDesignKit>
 					{submitLabel}
 				</Button>
 			</FormStack>

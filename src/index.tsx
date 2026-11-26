@@ -6,6 +6,7 @@ import Application from './web/Application';
 import {initGlobalStore} from "./data/state/store";
 
 import './index.css';
+import './admin-kit.css';
 
 const root = ReactDOM.createRoot(
 	document.getElementById('root') as HTMLElement

@@ -3,10 +3,17 @@ import style from "./FormStack.module.css";
 
 interface FormStackProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "children"> {
 	children: ReactNode;
+	useDesignKit?: boolean;
 }
 
-const FormStack: FC<FormStackProps> = ({children, className, ...props}) => (
-	<form {...props} className={[style.form, className ?? ""].filter(Boolean).join(" ")}>
+const FormStack: FC<FormStackProps> = ({children, className, useDesignKit = false, ...props}) => (
+	<form
+		{...props}
+		className={[
+			useDesignKit ? "academy-auth__stack" : style.form,
+			className ?? ""
+		].filter(Boolean).join(" ")}
+	>
 		{children}
 	</form>
 );

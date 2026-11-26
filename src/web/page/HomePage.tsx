@@ -1,19 +1,56 @@
-import React, {FC} from "react";
-import {Link, Outlet} from "react-router-dom";
-import style from "./AppShell.module.css";
+import React, {FC, useCallback, useEffect, useState} from "react";
+import {Outlet, useLocation} from "react-router-dom";
+import AdminSidebar from "../component/app_shell/AdminSidebar";
+import AdminTopbar from "../component/app_shell/AdminTopbar";
+import {ShellChromeProvider} from "../component/app_shell/ShellChromeContext";
 
-const HomePage: FC = () => (
-	<div className={style.shell}>
-		<header className={style.header}>
-			<span className={style.brand}>АКАДЕМИЯ ЕДИНОБОРСТВ</span>
-			<Link className={style.logout} to="/logout">
-				Выйти
-			</Link>
-		</header>
-		<main className={style.main}>
-			<Outlet/>
-		</main>
-	</div>
-);
+const HomePage: FC = () => {
+	const {pathname} = useLocation();
+	const [navOpen, setNavOpen] = useState(false);
+
+	const closeNav = useCallback(() => setNavOpen(false), []);
+	const toggleNav = useCallback(() => setNavOpen(open => !open), []);
+
+	useEffect(() => {
+		closeNav();
+	}, [pathname, closeNav]);
+
+	useEffect(() => {
+		const body = document.body;
+		if (navOpen) {
+			body.classList.add("academy-app--nav-open");
+		} else {
+			body.classList.remove("academy-app--nav-open");
+		}
+		return () => body.classList.remove("academy-app--nav-open");
+	}, [navOpen]);
+
+	useEffect(() => {
+		document.body.classList.add("academy-app");
+		return () => document.body.classList.remove("academy-app");
+	}, []);
+
+	return (
+		<ShellChromeProvider>
+			<div className="academy-app">
+				<AdminSidebar onNavigate={closeNav}/>
+				<main className="academy-app__main" id="main-content">
+					<AdminTopbar pathname={pathname} navOpen={navOpen} onToggleNav={toggleNav}/>
+					<div className="academy-app__content">
+						<Outlet/>
+					</div>
+				</main>
+				<button
+					type="button"
+					className="academy-app__nav-backdrop"
+					id="app-nav-backdrop"
+					hidden={!navOpen}
+					aria-label="Закрыть меню навигации"
+					onClick={closeNav}
+				/>
+			</div>
+		</ShellChromeProvider>
+	);
+};
 
 export default HomePage;

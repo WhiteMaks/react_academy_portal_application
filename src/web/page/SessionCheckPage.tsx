@@ -65,13 +65,13 @@ const SessionCheckPage: FC<SessionCheckPageProps> = ({
 			lead={errorLead}
 			footnote={<>Код ошибки: <code>{errorCode}</code>. JWT не сбрасывается до явного выхода.</>}
 		>
-			<FormMessage id="session-error">{alert}</FormMessage>
+			<FormMessage id="session-error" useDesignKit>{alert}</FormMessage>
 			<AuthStack>
-				<Button variant="gold" type="button" onClick={onRetry} disabled={loading} fullWidth>
+				<Button variant="gold" type="button" onClick={onRetry} disabled={loading} fullWidth useDesignKit>
 					{retryLabel}
 				</Button>
 				{onLogout && (
-					<Button variant="text" type="button" onClick={onLogout} className={style.logout}>
+					<Button variant="text" type="button" onClick={onLogout} className={style.logout} useDesignKit>
 						Выйти
 					</Button>
 				)}

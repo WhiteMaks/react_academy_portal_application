@@ -1,6 +1,7 @@
 /*
  * Design tokens — design/tokens/variables.css (source of truth).
  */
+/* Inter — public/index.html <link href="%PUBLIC_URL%/fonts/inter/inter.css"> */
 :root {
 	--ink: #171817;
 	--ink-2: #242622;
@@ -35,6 +36,34 @@
 	--alert-success-text: var(--green);
 	--focus-ring: 0 0 0 3px rgba(198, 164, 91, 0.25);
 	--focus-ring-error: 0 0 0 3px rgba(196, 91, 80, 0.22);
+	--status-active-bg: #e8f5ee;
+	--status-active-text: var(--green);
+	--status-inactive-bg: #eeede8;
+	--status-inactive-text: var(--muted);
+	--sidebar-width: 250px;
+	--sidebar-width-md: 220px;
+	--sidebar-bg: var(--ink);
+	--sidebar-text: #f7f5ef;
+	--sidebar-border: #373832;
+	--sidebar-nav-text: #c9c9c1;
+	--sidebar-nav-hover-bg: #34352f;
+	--sidebar-foot-text: #aaa99f;
+	--topbar-bg: var(--card);
+	--topbar-height: 72px;
+	--topbar-height-sm: 58px;
+	--content-max: 1600px;
+	--table-head-bg: #faf9f6;
+	--table-row-border: #f0eee8;
+	--table-row-hover-bg: #faf9f5;
+	--modal-overlay: rgba(21, 22, 17, 0.6);
+	--modal-close-bg: #f1f0eb;
+	--skeleton-shade-from: #efeee9;
+	--skeleton-shade-mid: #f7f6f2;
+	--profile-avatar-bg: #eee5d1;
+	--profile-avatar-text: #604b20;
+	--mini-avatar-bg: #eee8dc;
+	--mini-avatar-text: #725d32;
+	--input-subtle-bg: #fafaf8;
 }
 
 html {
@@ -62,4 +91,19 @@ textarea {
 
 a {
 	color: inherit;
+}
+
+#root {
+	min-height: 100dvh;
+	width: 100%;
+}
+
+/*
+ * В макете aside и main — прямые дети body.academy-app (flex).
+ * В React shell внутри #root: flex на body сжимает #root по содержимому,
+ * main визуально «прилипает» к левому краю viewport.
+ */
+body.academy-app {
+	display: block;
+	width: 100%;
 }

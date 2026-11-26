@@ -10,6 +10,8 @@ import LogoutPage from "./page/LogoutPage";
 import SessionCheckPage from "./page/SessionCheckPage";
 import AdminBootstrapPage from "./page/AdminBootstrapPage";
 import SectionPlaceholder from "./page/SectionPlaceholder";
+import AthletesPage from "./page/AthletesPage";
+import AthleteDetailPage from "./page/AthleteDetailPage";
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -21,14 +23,15 @@ const Application: FC = () => {
 	const initialToken = useRef(tokenState.token);
 	const restoreStarted = useRef(false);
 	const previousToken = useRef(tokenState.token);
+	const userRestoreStarted = useRef(false);
+
+	const readyToUse = microserviceState.service?.readyToUse;
+	const bootstrapRequired = readyToUse === false;
 
 	useEffect(() => {
 		if (!restoreStarted.current) {
 			restoreStarted.current = true;
 			dispatch(fetchMicroservice());
-			if (initialToken.current) {
-				dispatch(fetchUser());
-			}
 		}
 	}, [dispatch]);
 
@@ -36,17 +39,57 @@ const Application: FC = () => {
 		if (previousToken.current !== null && tokenState.token === null) {
 			dispatch(fetchMicroservice());
 			initialToken.current = null;
+			userRestoreStarted.current = false;
 		}
 		previousToken.current = tokenState.token;
 	}, [dispatch, tokenState.token]);
+
+	useEffect(() => {
+		if (bootstrapRequired) {
+			userRestoreStarted.current = false;
+			if (tokenState.token !== null) {
+				dispatch(logoutUser());
+			}
+			return;
+		}
+		if (readyToUse === true && tokenState.token !== null && !userRestoreStarted.current) {
+			userRestoreStarted.current = true;
+			dispatch(fetchUser());
+		}
+	}, [dispatch, bootstrapRequired, readyToUse, tokenState.token]);
 
 	const hasAdminIdentity = tokenState.token !== null && userState.user?.role === "admin";
 	const isAdmin = hasAdminIdentity;
 	const isRestoring = tokenState.token !== null && !userState.user &&
 		(userState.loading || (!userState.loading && !userState.errorKind));
 
-	// На /login SessionCheck не подменяет экран — ошибки и submit остаются в LoginPage.
-	const coldSessionRestore = isRestoring && initialToken.current !== null && !onLoginRoute;
+	const coldSessionRestore = !bootstrapRequired &&
+		isRestoring && initialToken.current !== null && !onLoginRoute;
+
+	if (microserviceState.loading && microserviceState.service === undefined) {
+		return (
+			<SessionCheckPage
+				layout="connecting"
+				loading
+				onRetry={() => dispatch(fetchMicroservice())}
+			/>
+		);
+	}
+
+	if (microserviceState.error && microserviceState.service === undefined) {
+		return (
+			<SessionCheckPage
+				layout="error"
+				errorCode="service"
+				retryLabel="Повторить"
+				onRetry={() => dispatch(fetchMicroservice())}
+			/>
+		);
+	}
+
+	if (bootstrapRequired) {
+		return <AdminBootstrapPage/>;
+	}
 
 	if (coldSessionRestore) {
 		return (
@@ -70,43 +113,22 @@ const Application: FC = () => {
 		);
 	}
 
-	if (!hasAdminIdentity && tokenState.token === null && !onLoginRoute) {
-		if (microserviceState.loading) {
-			return (
-				<SessionCheckPage
-					layout="connecting"
-					loading
-					onRetry={() => dispatch(fetchMicroservice())}
-				/>
-			);
-		}
-		if (microserviceState.error || !microserviceState.service) {
-			return (
-				<SessionCheckPage
-					layout="error"
-					errorCode="service"
-					retryLabel="Повторить"
-					onRetry={() => dispatch(fetchMicroservice())}
-				/>
-			);
-		}
-		if (microserviceState.service.readyToUse === false) {
-			return <AdminBootstrapPage/>;
-		}
-	}
-
 	return (
 		<Routes>
 			<Route path="/login" element={<LoginPage/>}/>
 			<Route path="/logout" element={isAdmin ? <LogoutPage/> : <Navigate to="/login" replace/>}/>
 			<Route path="/" element={isAdmin ? <HomePage/> : <Navigate to="/login" replace/>}>
-				<Route index element={<SectionPlaceholder title="Сегодня" today/>}/>
-				<Route path="calendar" element={<SectionPlaceholder title="Тренировки"/>}/>
-				<Route path="payments" element={<SectionPlaceholder title="Оплата"/>}/>
-				<Route path="groups/*" element={<SectionPlaceholder title="Группы"/>}/>
-				<Route path="coaches/*" element={<SectionPlaceholder title="Тренеры"/>}/>
-				<Route path="athletes/*" element={<SectionPlaceholder title="Спортсмены"/>}/>
-				<Route path="*" element={<SectionPlaceholder notFound/>}/>
+				<Route index element={<SectionPlaceholder section="home"/>}/>
+				<Route path="calendar" element={<Navigate to="/schedule" replace/>}/>
+				<Route path="schedule/*" element={<SectionPlaceholder section="schedule"/>}/>
+				<Route path="payments/*" element={<SectionPlaceholder section="payments"/>}/>
+				<Route path="groups/*" element={<SectionPlaceholder section="groups"/>}/>
+				<Route path="coaches/*" element={<SectionPlaceholder section="coaches"/>}/>
+				<Route path="gyms/*" element={<SectionPlaceholder section="gyms"/>}/>
+				<Route path="attendance/*" element={<SectionPlaceholder section="attendance"/>}/>
+				<Route path="athletes" element={<AthletesPage/>}/>
+				<Route path="athletes/:id" element={<AthleteDetailPage/>}/>
+				<Route path="*" element={<SectionPlaceholder section="notFound"/>}/>
 			</Route>
 		</Routes>
 	);
