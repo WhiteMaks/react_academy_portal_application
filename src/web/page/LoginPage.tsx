@@ -1,8 +1,8 @@
-import React, {FC, FormEvent, useState} from "react";
-import {Navigate, useLocation, useNavigate} from "react-router-dom";
+import React, {FC, FormEvent, useEffect, useRef, useState} from "react";
+import {useLocation, useNavigate} from "react-router-dom";
 import {Location} from "react-router";
 import {ApiErrorKind, toApiFailure} from "../../api/ApiError";
-import {fetchUser, userActions} from "../../data/state/user/UserReducer";
+import {fetchUser} from "../../data/state/user/UserReducer";
 import {fetchUserToken, logoutUser} from "../../data/state/user/UserTokenReducer";
 import {useGlobalDispatch, useGlobalSelector} from "../../data/state/store";
 import Button from "../component/common/button/Button";
@@ -42,53 +42,76 @@ const LoginPage: FC = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const navigationState = readNavigationState(location);
-	const tokenState = useGlobalSelector(state => state.userTokenReducer);
-	const userState = useGlobalSelector(state => state.userReducer);
+	const storedToken = useGlobalSelector(state => state.userTokenReducer.token);
+	const profile = useGlobalSelector(state => state.userReducer.user);
+	const profileError = useGlobalSelector(state => state.userReducer.errorKind);
+	const profileLoading = useGlobalSelector(state => state.userReducer.loading);
 	const [username, setUsername] = useState(navigationState.username ?? "");
 	const [password, setPassword] = useState("");
 	const [requestError, setRequestError] = useState<ApiErrorKind | undefined>();
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [checkingAccess, setCheckingAccess] = useState(false);
+	const [phase, setPhase] = useState<"idle" | "signingIn" | "checkingAccess">("idle");
+	const submitLock = useRef(false);
 
-	if (tokenState.token !== null && userState.user?.role === "admin") {
-		return <Navigate to="/" replace/>;
-	}
+	const hasUnverifiedToken = storedToken !== null && profileError === "service";
+	const errorKind = requestError ?? (hasUnverifiedToken ? profileError : undefined);
+	const isEstablishedAdmin = storedToken !== null && profile?.role === "admin";
+	const resumingSession = phase === "idle" && storedToken !== null && !profile && profileLoading;
+	const isBusy = phase !== "idle" || resumingSession || (hasUnverifiedToken && profileLoading);
+	const invalidCredentials = errorKind === "credentials";
 
-	const errorKind = requestError ?? userState.errorKind ?? tokenState.errorKind;
-	const isBusy = isSubmitting || tokenState.loading || userState.loading;
-	const hasUnverifiedToken = tokenState.token !== null && userState.errorKind === "service";
+	useEffect(() => {
+		if (phase !== "idle" || !storedToken || profile || profileLoading) return;
+		void dispatch(fetchUser());
+	}, [dispatch, phase, profile, profileLoading, storedToken]);
+
+	useEffect(() => {
+		if (isEstablishedAdmin && phase === "idle") {
+			navigate("/", {replace: true});
+		}
+	}, [isEstablishedAdmin, navigate, phase]);
+
+	const finishLoginAttempt = () => {
+		submitLock.current = false;
+		setPhase("idle");
+	};
 
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		if (isBusy) return;
+		if (submitLock.current || isBusy || hasUnverifiedToken) return;
 
-		setIsSubmitting(true);
-		setRequestError(undefined);
-		dispatch(userActions.clearUser());
+		submitLock.current = true;
+		setPhase("signingIn");
+
+		let navigatedAway = false;
 		try {
 			await dispatch(fetchUserToken({username, password})).unwrap();
-			setCheckingAccess(true);
+			setPhase("checkingAccess");
 			const user = await dispatch(fetchUser()).unwrap();
 			if (user.role === "admin") {
 				navigate("/", {replace: true});
+				navigatedAway = true;
 			}
 		} catch (error) {
 			const {kind} = toApiFailure(error);
+			if (kind === "superseded") return;
 			if (kind !== "service") setPassword("");
 			setRequestError(kind);
 		} finally {
-			setIsSubmitting(false);
-			setCheckingAccess(false);
+			if (!navigatedAway) {
+				finishLoginAttempt();
+			}
 		}
 	};
 
 	const retrySessionCheck = async () => {
+		if (profileLoading) return;
 		setRequestError(undefined);
 		try {
 			await dispatch(fetchUser()).unwrap();
 			navigate("/", {replace: true});
 		} catch (error) {
-			setRequestError(toApiFailure(error).kind);
+			const {kind} = toApiFailure(error);
+			if (kind !== "superseded") setRequestError(kind);
 		}
 	};
 
@@ -96,6 +119,11 @@ const LoginPage: FC = () => {
 		void dispatch(logoutUser());
 		setRequestError(undefined);
 	};
+
+	const submitLabel =
+		resumingSession ? "Проверяем сессию…" :
+			phase === "checkingAccess" ? "Проверяем доступ…" :
+				phase === "signingIn" ? "Входим…" : "Войти";
 
 	return (
 		<AuthFormLayout
@@ -109,13 +137,15 @@ const LoginPage: FC = () => {
 				<FormMessage variant="notice">{navigationState.notice}</FormMessage>
 			)}
 
-			{errorKind && (
-				<FormMessage id="login-error">{errorMessages[errorKind]}</FormMessage>
-			)}
+			<div className={style.errorSlot} aria-live="assertive">
+				{errorKind ? (
+					<FormMessage id="login-error">{errorMessages[errorKind]}</FormMessage>
+				) : null}
+			</div>
 
 			{hasUnverifiedToken && (
 				<div className={style.sessionActions}>
-					<Button variant="gold" type="button" onClick={retrySessionCheck} disabled={isBusy} fullWidth>
+					<Button variant="gold" type="button" onClick={retrySessionCheck} disabled={profileLoading} fullWidth>
 						Повторить
 					</Button>
 					<Button variant="text" type="button" onClick={handleLogout}>
@@ -137,7 +167,7 @@ const LoginPage: FC = () => {
 						setUsername(event.target.value);
 						setRequestError(undefined);
 					}}
-					invalid={errorKind === "credentials"}
+					invalid={invalidCredentials}
 					describedBy={errorKind ? "login-error" : undefined}
 				/>
 				<TextField
@@ -153,11 +183,11 @@ const LoginPage: FC = () => {
 						setPassword(event.target.value);
 						setRequestError(undefined);
 					}}
-					invalid={errorKind === "credentials"}
+					invalid={invalidCredentials}
 					describedBy={errorKind ? "login-error" : undefined}
 				/>
 				<Button variant="gold" type="submit" disabled={isBusy || hasUnverifiedToken} fullWidth>
-					{checkingAccess ? "Проверяем доступ…" : isBusy ? "Входим…" : "Войти"}
+					{submitLabel}
 				</Button>
 			</FormStack>
 		</AuthFormLayout>

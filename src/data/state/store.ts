@@ -4,7 +4,6 @@ import microserviceReducer from "./microservice/MicroserviceReducer";
 import userTokenReducer from "./user/UserTokenReducer";
 import userReducer from "./user/UserReducer";
 import adminBootstrapReducer from "./user/AdminBootstrapReducer";
-
 const globalReducer = combineReducers({
 	microserviceReducer: microserviceReducer,
 	userTokenReducer: userTokenReducer,

@@ -83,7 +83,6 @@ export const userSlice = createSlice({
 	extraReducers: builder => {
 		builder.addCase(fetchUser.pending, (state, action) => {
 			state.loading = true;
-			state.user = undefined;
 			state.errorKind = undefined;
 			state.activeRequestId = action.meta.requestId;
 		});
@@ -104,7 +103,7 @@ export const userSlice = createSlice({
 			state.activeRequestId = undefined;
 		});
 		builder.addMatcher((action): action is PayloadAction =>
-			["user/logout/pending", "user/logout/fulfilled", "user/token/pending", "user/token/fulfilled"].includes(action.type), state => {
+			["user/logout/pending", "user/logout/fulfilled", "user/token/fulfilled"].includes(action.type), state => {
 			state.user = undefined;
 			state.loading = false;
 			state.errorKind = undefined;

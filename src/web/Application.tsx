@@ -1,5 +1,5 @@
 import React, {FC, useEffect, useRef} from "react";
-import {Navigate, Route, Routes} from "react-router-dom";
+import {Navigate, Route, Routes, useLocation} from "react-router-dom";
 import {fetchMicroservice} from "../data/state/microservice/MicroserviceReducer";
 import {fetchUser} from "../data/state/user/UserReducer";
 import {logoutUser} from "../data/state/user/UserTokenReducer";
@@ -16,6 +16,8 @@ const Application: FC = () => {
 	const tokenState = useGlobalSelector(state => state.userTokenReducer);
 	const userState = useGlobalSelector(state => state.userReducer);
 	const microserviceState = useGlobalSelector(state => state.microserviceReducer);
+	const location = useLocation();
+	const onLoginRoute = location.pathname === "/login";
 	const initialToken = useRef(tokenState.token);
 	const restoreStarted = useRef(false);
 	const previousToken = useRef(tokenState.token);
@@ -24,13 +26,16 @@ const Application: FC = () => {
 		if (!restoreStarted.current) {
 			restoreStarted.current = true;
 			dispatch(fetchMicroservice());
-			if (initialToken.current) dispatch(fetchUser());
+			if (initialToken.current) {
+				dispatch(fetchUser());
+			}
 		}
 	}, [dispatch]);
 
 	useEffect(() => {
 		if (previousToken.current !== null && tokenState.token === null) {
 			dispatch(fetchMicroservice());
+			initialToken.current = null;
 		}
 		previousToken.current = tokenState.token;
 	}, [dispatch, tokenState.token]);
@@ -40,7 +45,10 @@ const Application: FC = () => {
 	const isRestoring = tokenState.token !== null && !userState.user &&
 		(userState.loading || (!userState.loading && !userState.errorKind));
 
-	if (isRestoring) {
+	// На /login SessionCheck не подменяет экран — ошибки и submit остаются в LoginPage.
+	const coldSessionRestore = isRestoring && initialToken.current !== null && !onLoginRoute;
+
+	if (coldSessionRestore) {
 		return (
 			<SessionCheckPage
 				layout="restoring"
@@ -51,7 +59,7 @@ const Application: FC = () => {
 		);
 	}
 
-	if (tokenState.token !== null && userState.errorKind === "service") {
+	if (!onLoginRoute && tokenState.token !== null && userState.errorKind === "service") {
 		return (
 			<SessionCheckPage
 				layout="error"
@@ -62,7 +70,7 @@ const Application: FC = () => {
 		);
 	}
 
-	if (!hasAdminIdentity && tokenState.token === null) {
+	if (!hasAdminIdentity && tokenState.token === null && !onLoginRoute) {
 		if (microserviceState.loading) {
 			return (
 				<SessionCheckPage
@@ -87,23 +95,19 @@ const Application: FC = () => {
 		}
 	}
 
-	const renderContentRoutes = () => (
-		<Route path="/" element={isAdmin ? <HomePage/> : <Navigate to="/login" replace/>}>
-			<Route index element={<SectionPlaceholder title="Сегодня" today/>}/>
-			<Route path="calendar" element={<SectionPlaceholder title="Тренировки"/>}/>
-			<Route path="payments" element={<SectionPlaceholder title="Оплата"/>}/>
-			<Route path="groups/*" element={<SectionPlaceholder title="Группы"/>}/>
-			<Route path="coaches/*" element={<SectionPlaceholder title="Тренеры"/>}/>
-			<Route path="athletes/*" element={<SectionPlaceholder title="Спортсмены"/>}/>
-			<Route path="*" element={<SectionPlaceholder notFound/>}/>
-		</Route>
-	);
-
 	return (
 		<Routes>
-			<Route path="/login" element={isAdmin ? <Navigate to="/" replace/> : <LoginPage/>}/>
+			<Route path="/login" element={<LoginPage/>}/>
 			<Route path="/logout" element={isAdmin ? <LogoutPage/> : <Navigate to="/login" replace/>}/>
-			{renderContentRoutes()}
+			<Route path="/" element={isAdmin ? <HomePage/> : <Navigate to="/login" replace/>}>
+				<Route index element={<SectionPlaceholder title="Сегодня" today/>}/>
+				<Route path="calendar" element={<SectionPlaceholder title="Тренировки"/>}/>
+				<Route path="payments" element={<SectionPlaceholder title="Оплата"/>}/>
+				<Route path="groups/*" element={<SectionPlaceholder title="Группы"/>}/>
+				<Route path="coaches/*" element={<SectionPlaceholder title="Тренеры"/>}/>
+				<Route path="athletes/*" element={<SectionPlaceholder title="Спортсмены"/>}/>
+				<Route path="*" element={<SectionPlaceholder notFound/>}/>
+			</Route>
 		</Routes>
 	);
 };
