@@ -8,6 +8,7 @@ import PostUserV1Response from "./models/user/PostUserV1Response";
 import GetAthletesV1Response from "./models/athlete/GetAthletesV1Response";
 import AthleteV1Response from "./models/athlete/AthleteV1Response";
 import PostAthleteV1Request from "./models/athlete/PostAthleteV1Request";
+import PutAthleteV1Request from "./models/athlete/PutAthleteV1Request";
 
 class AcademyPortalService {
 	private static instance: AcademyPortalService | null = null;
@@ -169,6 +170,34 @@ class AcademyPortalService {
 		if (response.status === 401) throw new ApiError("unauthorized", response.status);
 		if (response.status === 403) throw new ApiError("forbidden", response.status);
 		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (!response.ok) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isAthleteResponse(data)) throw new ApiError("service", response.status);
+			return data;
+		} catch (error) {
+			if (error instanceof ApiError) throw error;
+			throw new ApiError("service", response.status);
+		}
+	}
+
+	public async putAthleteV1(id: string, request: PutAthleteV1Request): Promise<AthleteV1Response> {
+		const url = `${this.host}${this.ATHLETES_V1}/${encodeURIComponent(id)}`;
+		let response: Response;
+		try {
+			response = await fetch(url, {
+				method: "PUT",
+				headers: {"Content-Type": "application/json", ...this.generateHeaders()},
+				body: JSON.stringify(request)
+			});
+		} catch {
+			throw new ApiError("service");
+		}
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (response.status === 409) throw new ApiError("conflict", response.status);
+		if (response.status === 400) throw new ApiError("request", response.status);
 		if (!response.ok) throw new ApiError("service", response.status);
 		try {
 			const data: unknown = await response.json();

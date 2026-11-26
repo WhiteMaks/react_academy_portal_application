@@ -2,7 +2,7 @@ import React, {ChangeEvent, FC, InputHTMLAttributes} from "react";
 import style from "./TextField.module.css";
 
 type NativeInputProps = Pick<InputHTMLAttributes<HTMLInputElement>,
-	"autoComplete" | "disabled" | "inputMode" | "maxLength" | "minLength" | "name" | "pattern" | "placeholder" | "required" | "type"
+	"autoComplete" | "disabled" | "inputMode" | "maxLength" | "minLength" | "name" | "pattern" | "placeholder" | "readOnly" | "required" | "type"
 >;
 
 interface TextFieldProps extends NativeInputProps {

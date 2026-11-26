@@ -1150,15 +1150,6 @@
     flex-basis: 100%;
   }
 }/* --- pages/athletes-detail.css --- */
-/* Карточка спортсмена — композиция страницы */
-.athletes-detail__lead {
-  margin: 0;
-  max-width: 520px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
 .page-head h1 .data-table__status {
   vertical-align: middle;
   margin-left: 8px;
@@ -1172,6 +1163,123 @@
 .academy-app__crumb a:hover {
   color: var(--gold-deep);
   text-decoration: underline;
+}
+
+.athletes-detail__card {
+  position: relative;
+  padding: 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  max-width: 720px;
+}
+
+.athletes-detail__form-banner {
+  margin: 0 0 16px;
+}
+
+.athletes-detail__form .academy-modal__sections {
+  gap: 20px;
+}
+
+.athletes-detail__form textarea.academy-field__control {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.athletes-detail__card--loading {
+  min-height: 320px;
+}
+
+.athletes-detail__card--loading .athletes-detail__form {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.athletes-detail__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--card-loading-overlay);
+  border-radius: inherit;
+}
+
+.athletes-detail__loading-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.athletes-detail__skeleton-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 20px;
+}
+
+.athletes-detail__skeleton-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.athletes-detail__skeleton-label {
+  width: 72px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line);
+}
+
+.athletes-detail__skeleton-input {
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-shade-from) 0%,
+    var(--skeleton-shade-mid) 50%,
+    var(--skeleton-shade-from) 100%
+  );
+  background-size: 200% 100%;
+  animation: athletes-detail-shimmer 1.2s ease infinite;
+}
+
+.athletes-detail__skeleton-input--wide {
+  grid-column: 1 / -1;
+  height: 88px;
+}
+
+.athletes-detail__skeleton-note {
+  display: block;
+  margin-top: 16px;
+}
+
+@keyframes athletes-detail-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.athletes-detail__page-message {
+  max-width: 520px;
+}
+
+@media (max-width: 700px) {
+  .athletes-detail__card {
+    padding: 16px;
+  }
+
+  .athletes-detail__skeleton-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* --- layouts/auth-shell.css (design/pages auth-bootstrap, auth-login) --- */

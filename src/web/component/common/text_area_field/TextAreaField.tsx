@@ -2,7 +2,7 @@ import React, {ChangeEvent, FC, TextareaHTMLAttributes} from "react";
 import style from "./TextAreaField.module.css";
 
 type NativeTextAreaProps = Pick<TextareaHTMLAttributes<HTMLTextAreaElement>,
-	"disabled" | "maxLength" | "name" | "placeholder" | "required" | "rows"
+	"disabled" | "maxLength" | "name" | "placeholder" | "readOnly" | "required" | "rows"
 >;
 
 export interface TextAreaFieldProps extends NativeTextAreaProps {
@@ -15,6 +15,7 @@ export interface TextAreaFieldProps extends NativeTextAreaProps {
 	describedBy?: string;
 	showRequiredIndicator?: boolean;
 	useDesignKit?: boolean;
+	fullWidth?: boolean;
 }
 
 const TextAreaField: FC<TextAreaFieldProps> = ({
@@ -28,6 +29,7 @@ const TextAreaField: FC<TextAreaFieldProps> = ({
 	required = false,
 	showRequiredIndicator = false,
 	useDesignKit = false,
+	fullWidth = false,
 	...textareaProps
 }) => {
 	const errorId = error ? `${id}-error` : undefined;
@@ -35,7 +37,10 @@ const TextAreaField: FC<TextAreaFieldProps> = ({
 
 	if (useDesignKit) {
 		return (
-			<label className="academy-field" htmlFor={id}>
+			<label
+				className={["academy-field", fullWidth ? "academy-field--full" : ""].filter(Boolean).join(" ")}
+				htmlFor={id}
+			>
 				<span
 					className={[
 						"academy-field__label",

@@ -104,7 +104,7 @@ export const birthDateMaskToIso = (mask: string): string | null => {
 };
 
 export const BIRTH_DATE_FUTURE_MSG = "Дата рождения не может быть в будущем";
-const BIRTH_DATE_INVALID_MSG = "Укажите существующую дату в формате дд.мм.гггг";
+const BIRTH_DATE_INVALID_MSG = "Укажите дату в формате дд.мм.гггг";
 
 /** Календарное сравнение с сегодня (локальная дата пользователя). */
 export const isBirthDateNotAfterToday = (iso: string): boolean => {

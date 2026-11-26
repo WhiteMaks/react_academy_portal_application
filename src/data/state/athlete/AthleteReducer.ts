@@ -4,6 +4,7 @@ import {ApiErrorKind, ApiFailure, toApiFailure} from "../../../api/ApiError";
 import GetAthletesV1Response from "../../../api/models/athlete/GetAthletesV1Response";
 import AthleteV1Response from "../../../api/models/athlete/AthleteV1Response";
 import PostAthleteV1Request from "../../../api/models/athlete/PostAthleteV1Request";
+import PutAthleteV1Request from "../../../api/models/athlete/PutAthleteV1Request";
 import {ATHLETES_LIST_DEFAULT_LIMIT} from "../../../api/constants/athleteFieldLimits";
 
 const LIST_LIMIT = ATHLETES_LIST_DEFAULT_LIMIT;
@@ -27,6 +28,8 @@ interface AthletesState {
 	detail?: AthleteV1Response;
 	detailLoading: boolean;
 	detailErrorKind?: ApiErrorKind;
+	updateLoading: boolean;
+	updateErrorKind?: ApiErrorKind;
 }
 
 const initialState: AthletesState = {
@@ -37,7 +40,8 @@ const initialState: AthletesState = {
 	query: "",
 	listLoading: false,
 	createLoading: false,
-	detailLoading: false
+	detailLoading: false,
+	updateLoading: false
 };
 
 const service = AcademyPortalService.getInstance();
@@ -64,6 +68,18 @@ export const fetchAthleteDetail = createAsyncThunk<AthleteV1Response, string, {r
 	}
 );
 
+export const putAthleteV1 = createAsyncThunk<
+	AthleteV1Response,
+	{id: string; body: PutAthleteV1Request},
+	{rejectValue: ApiFailure}
+>("athletes/update", async ({id, body}, {rejectWithValue}) => {
+	try {
+		return await service.putAthleteV1(id, body);
+	} catch (error) {
+		return rejectWithValue(toApiFailure(error));
+	}
+});
+
 export const createAthlete = createAsyncThunk<AthleteV1Response, PostAthleteV1Request, {rejectValue: ApiFailure}>(
 	"athletes/create",
 	async (body, {rejectWithValue}) => {
@@ -87,6 +103,15 @@ export const athleteSlice = createSlice({
 			state.detail = undefined;
 			state.detailErrorKind = undefined;
 			state.detailLoading = false;
+			state.updateLoading = false;
+			state.updateErrorKind = undefined;
+		},
+		patchAthleteInList: (state, action: PayloadAction<AthleteV1Response>) => {
+			const updated = action.payload;
+			const index = state.list.findIndex(item => item.id === updated.id);
+			if (index >= 0) {
+				state.list[index] = updated;
+			}
 		}
 	},
 	extraReducers: builder => {
@@ -124,6 +149,22 @@ export const athleteSlice = createSlice({
 		builder.addCase(fetchAthleteDetail.rejected, (state, action) => {
 			state.detailLoading = false;
 			state.detailErrorKind = action.payload?.kind ?? "service";
+		});
+		builder.addCase(putAthleteV1.pending, state => {
+			state.updateLoading = true;
+			state.updateErrorKind = undefined;
+		});
+		builder.addCase(putAthleteV1.fulfilled, (state, action) => {
+			state.updateLoading = false;
+			state.detail = action.payload;
+			const index = state.list.findIndex(item => item.id === action.payload.id);
+			if (index >= 0) {
+				state.list[index] = action.payload;
+			}
+		});
+		builder.addCase(putAthleteV1.rejected, (state, action) => {
+			state.updateLoading = false;
+			state.updateErrorKind = action.payload?.kind ?? "service";
 		});
 		builder.addCase(createAthlete.pending, state => {
 			state.createLoading = true;
