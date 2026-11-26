@@ -3,18 +3,21 @@ export type ApiErrorKind = "credentials" | "unauthorized" | "forbidden" | "notFo
 export interface ApiFailure {
 	kind: ApiErrorKind;
 	status?: number;
+	message?: string;
 }
 
 export class ApiError extends Error {
 	public readonly kind: ApiErrorKind;
 	public readonly status?: number;
+	public readonly serverMessage?: string;
 
-	public constructor(kind: ApiErrorKind, status?: number) {
-		super(kind);
+	public constructor(kind: ApiErrorKind, status?: number, serverMessage?: string) {
+		super(serverMessage ?? kind);
 		Object.setPrototypeOf(this, ApiError.prototype);
 		this.name = "ApiError";
 		this.kind = kind;
 		this.status = status;
+		this.serverMessage = serverMessage;
 	}
 }
 
@@ -33,11 +36,11 @@ export const isApiFailure = (error: unknown): error is ApiFailure => {
 /** Нормализует ApiError, payload из redux `unwrap()` или неизвестную ошибку. */
 export const toApiFailure = (error: unknown, fallback: ApiErrorKind = "service"): ApiFailure => {
 	if (error instanceof ApiError) {
-		return {kind: error.kind, status: error.status};
+		return {kind: error.kind, status: error.status, message: error.serverMessage};
 	}
 	if (isApiFailure(error)) {
 		const failure = error as ApiFailure;
-		return {kind: failure.kind, status: failure.status};
+		return {kind: failure.kind, status: failure.status, message: failure.message};
 	}
 	return {kind: fallback};
 };

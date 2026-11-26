@@ -1,5 +1,5 @@
 import React, {FC, useEffect, useRef} from "react";
-import {Navigate, Route, Routes, useLocation} from "react-router-dom";
+import {Navigate, Route, Routes, useLocation, useParams} from "react-router-dom";
 import {fetchMicroservice} from "../data/state/microservice/MicroserviceReducer";
 import {fetchUser} from "../data/state/user/UserReducer";
 import {logoutUser} from "../data/state/user/UserTokenReducer";
@@ -14,6 +14,17 @@ import AthletesPage from "./page/AthletesPage";
 import AthleteDetailPage from "./page/AthleteDetailPage";
 import CoachesPage from "./page/CoachesPage";
 import CoachDetailPage from "./page/CoachDetailPage";
+import BranchesPage from "./page/BranchesPage";
+import BranchDetailPage from "./page/BranchDetailPage";
+import HallDetailPage from "./page/HallDetailPage";
+
+const HallDetailUrlCleanup: FC = () => {
+	const {branchId, hallId} = useParams<{branchId: string; hallId: string}>();
+	if (!branchId || !hallId) {
+		return <Navigate to="/gyms" replace/>;
+	}
+	return <Navigate to={`/gyms/${branchId}/halls/${hallId}`} replace/>;
+};
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -127,7 +138,13 @@ const Application: FC = () => {
 				<Route path="groups/*" element={<SectionPlaceholder section="groups"/>}/>
 				<Route path="coaches" element={<CoachesPage/>}/>
 				<Route path="coaches/:id" element={<CoachDetailPage/>}/>
-				<Route path="gyms/*" element={<SectionPlaceholder section="gyms"/>}/>
+				<Route path="gyms" element={<BranchesPage/>}/>
+				<Route path="gyms/:branchId" element={<BranchDetailPage/>}/>
+				<Route path="gyms/:branchId/halls/:hallId" element={<HallDetailPage/>}/>
+				<Route
+					path="gyms/:branchId/halls/:hallId/*"
+					element={<HallDetailUrlCleanup/>}
+				/>
 				<Route path="attendance/*" element={<SectionPlaceholder section="attendance"/>}/>
 				<Route path="athletes" element={<AthletesPage/>}/>
 				<Route path="athletes/:id" element={<AthleteDetailPage/>}/>

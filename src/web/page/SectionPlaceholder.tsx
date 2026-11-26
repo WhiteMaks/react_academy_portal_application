@@ -13,7 +13,7 @@ export type PlaceholderSection =
 
 const SECTION_COPY: Record<Exclude<PlaceholderSection, "notFound" | "home">, {eyebrow: string; title: string}> = {
 	coaches: {eyebrow: "Кадры клуба", title: "Тренеры"},
-	gyms: {eyebrow: "Инфраструктура", title: "Спортзалы"},
+	gyms: {eyebrow: "Инфраструктура", title: "Филиалы"},
 	groups: {eyebrow: "Занятия", title: "Группы"},
 	schedule: {eyebrow: "Планирование", title: "Расписание"},
 	attendance: {eyebrow: "Учёт", title: "Посещаемость"},

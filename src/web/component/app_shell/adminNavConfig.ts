@@ -9,7 +9,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
 	{path: "/", label: "Главная", icon: "⌂", match: p => p === "/"},
 	{path: "/athletes", label: "Спортсмены", icon: "♙", match: p => p.startsWith("/athletes")},
 	{path: "/coaches", label: "Тренеры", icon: "♟", match: p => p.startsWith("/coaches")},
-	{path: "/gyms", label: "Спортзалы", icon: "▦", match: p => p.startsWith("/gyms")},
+	{path: "/gyms", label: "Филиалы", icon: "▦", match: p => p.startsWith("/gyms")},
 	{path: "/groups", label: "Группы", icon: "◉", match: p => p.startsWith("/groups")},
 	{path: "/schedule", label: "Расписание", icon: "▣", match: p => p.startsWith("/schedule")},
 	{path: "/attendance", label: "Посещаемость", icon: "✓", match: p => p.startsWith("/attendance")},

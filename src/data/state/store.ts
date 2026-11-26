@@ -6,13 +6,17 @@ import userReducer from "./user/UserReducer";
 import adminBootstrapReducer from "./user/AdminBootstrapReducer";
 import athleteReducer from "./athlete/AthleteReducer";
 import coachReducer from "./coach/CoachReducer";
+import branchReducer from "./branch/BranchReducer";
+import hallReducer from "./hall/HallReducer";
 const globalReducer = combineReducers({
 	microserviceReducer: microserviceReducer,
 	userTokenReducer: userTokenReducer,
 	userReducer: userReducer,
 	adminBootstrapReducer: adminBootstrapReducer,
 	athleteReducer: athleteReducer,
-	coachReducer: coachReducer
+	coachReducer: coachReducer,
+	branchReducer: branchReducer,
+	hallReducer: hallReducer
 });
 
 export const initGlobalStore = () => {
