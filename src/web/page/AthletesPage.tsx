@@ -190,7 +190,7 @@ const AthletesPage: FC = () => {
 						<p className="data-table__loading-text">Загрузка списка…</p>
 					</div>
 				) : null}
-				<table className="data-table">
+				<table className="data-table athletes-list-table">
 					<thead>
 						<tr>
 							<th scope="col">Спортсмен</th>

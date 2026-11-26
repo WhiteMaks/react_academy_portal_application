@@ -15,7 +15,7 @@ import {logoutUser} from "../../data/state/user/UserTokenReducer";
 import DesignForm from "../component/common/design_form/DesignForm";
 import {focusFirstFieldByName} from "../component/common/design_form/formContract";
 import AthleteFormFields from "../component/athlete/AthleteFormFields";
-import {athleteResponseToFormValues} from "../component/athlete/athleteFormFromResponse";
+import {athleteResponseToFormValues, isAthleteFormDirty} from "../component/athlete/athleteFormFromResponse";
 import {
 	ATHLETE_FIELD_FOCUS_ORDER,
 	AthleteFormField,
@@ -45,6 +45,7 @@ const AthleteDetailPage: FC = () => {
 	const {detail, detailLoading, detailErrorKind, updateLoading} = useGlobalSelector(state => state.athleteReducer);
 
 	const [form, setForm] = useState<AthleteFormValues>(EMPTY_ATHLETE_FORM);
+	const [baselineForm, setBaselineForm] = useState<AthleteFormValues>(EMPTY_ATHLETE_FORM);
 	const [clientErrors, setClientErrors] = useState<AthleteFormFieldErrors>({});
 	const [serverFieldErrors, setServerFieldErrors] = useState<AthleteFormFieldErrors>({});
 	const [formBanner, setFormBanner] = useState<string | null>(null);
@@ -74,7 +75,9 @@ const AthleteDetailPage: FC = () => {
 		if (!detail) return;
 		const isNewAthlete = loadedDetailIdRef.current !== detail.id;
 		loadedDetailIdRef.current = detail.id;
-		setForm(athleteResponseToFormValues(detail));
+		const values = athleteResponseToFormValues(detail);
+		setForm(values);
+		setBaselineForm(values);
 		if (isNewAthlete) {
 			setClientErrors({});
 			setServerFieldErrors({});
@@ -104,6 +107,8 @@ const AthleteDetailPage: FC = () => {
 			setCrumbTrail(null);
 		};
 	}, [displayName, setCrumbTrail, setMobileTitleOverride]);
+
+	const isDirty = useMemo(() => isAthleteFormDirty(form, baselineForm), [form, baselineForm]);
 
 	const fieldError = (field: AthleteFormField): string | undefined =>
 		clientErrors[field] ?? serverFieldErrors[field];
@@ -186,7 +191,7 @@ const AthleteDetailPage: FC = () => {
 
 	const handleSave = (event: FormEvent) => {
 		event.preventDefault();
-		if (updateLoading || !detail) return;
+		if (updateLoading || !detail || !isDirty) return;
 		const result = validateAthleteForm(form);
 		if (!result.ok) {
 			setClientErrors(result.errors);
@@ -345,7 +350,7 @@ const AthleteDetailPage: FC = () => {
 						type="submit"
 						className="btn btn--primary"
 						form="athleteDetailForm"
-						disabled={submitting}
+						disabled={submitting || !isDirty}
 						aria-busy={submitMode === "save" && submitting ? true : undefined}
 					>
 						{saveLabel}

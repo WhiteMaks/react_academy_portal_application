@@ -9,6 +9,10 @@ import GetAthletesV1Response from "./models/athlete/GetAthletesV1Response";
 import AthleteV1Response from "./models/athlete/AthleteV1Response";
 import PostAthleteV1Request from "./models/athlete/PostAthleteV1Request";
 import PutAthleteV1Request from "./models/athlete/PutAthleteV1Request";
+import GetCoachesV1Response from "./models/coach/GetCoachesV1Response";
+import CoachV1Response from "./models/coach/CoachV1Response";
+import PostCoachV1Request from "./models/coach/PostCoachV1Request";
+import PutCoachV1Request from "./models/coach/PutCoachV1Request";
 
 class AcademyPortalService {
 	private static instance: AcademyPortalService | null = null;
@@ -32,6 +36,11 @@ class AcademyPortalService {
 	private readonly ATHLETE_V1: string = this.ATHLETE + this.V1;
 	private readonly ATHLETES: string = this.API + "/athletes";
 	private readonly ATHLETES_V1: string = this.ATHLETES + this.V1;
+
+	private readonly COACH: string = this.API + "/coach";
+	private readonly COACH_V1: string = this.COACH + this.V1;
+	private readonly COACHES: string = this.API + "/coaches";
+	private readonly COACHES_V1: string = this.COACHES + this.V1;
 
 	private constructor(host: string) {
 		this.host = host;
@@ -209,6 +218,110 @@ class AcademyPortalService {
 		}
 	}
 
+	public async getCoachesV1(params: {q?: string; limit?: number; offset?: number}): Promise<GetCoachesV1Response> {
+		const search = new URLSearchParams();
+		if (params.q?.trim()) search.set("q", params.q.trim());
+		if (params.limit !== undefined) search.set("limit", String(params.limit));
+		if (params.offset !== undefined) search.set("offset", String(params.offset));
+		const query = search.toString();
+		const url = this.host + this.COACHES_V1 + (query ? `?${query}` : "");
+		let response: Response;
+		try {
+			response = await fetch(url, {method: "GET", headers: this.generateHeaders()});
+		} catch {
+			throw new ApiError("service");
+		}
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (!response.ok) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isCoachesListResponse(data)) throw new ApiError("service", response.status);
+			return data;
+		} catch (error) {
+			if (error instanceof ApiError) throw error;
+			throw new ApiError("service", response.status);
+		}
+	}
+
+	public async getCoachV1(id: string): Promise<CoachV1Response> {
+		const url = `${this.host}${this.COACHES_V1}/${encodeURIComponent(id)}`;
+		let response: Response;
+		try {
+			response = await fetch(url, {method: "GET", headers: this.generateHeaders()});
+		} catch {
+			throw new ApiError("service");
+		}
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (!response.ok) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isCoachResponse(data)) throw new ApiError("service", response.status);
+			return data;
+		} catch (error) {
+			if (error instanceof ApiError) throw error;
+			throw new ApiError("service", response.status);
+		}
+	}
+
+	public async putCoachV1(id: string, request: PutCoachV1Request): Promise<CoachV1Response> {
+		const url = `${this.host}${this.COACHES_V1}/${encodeURIComponent(id)}`;
+		let response: Response;
+		try {
+			response = await fetch(url, {
+				method: "PUT",
+				headers: {"Content-Type": "application/json", ...this.generateHeaders()},
+				body: JSON.stringify(request)
+			});
+		} catch {
+			throw new ApiError("service");
+		}
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 404) throw new ApiError("notFound", response.status);
+		if (response.status === 409) throw new ApiError("conflict", response.status);
+		if (response.status === 400) throw new ApiError("request", response.status);
+		if (!response.ok) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isCoachResponse(data)) throw new ApiError("service", response.status);
+			return data;
+		} catch (error) {
+			if (error instanceof ApiError) throw error;
+			throw new ApiError("service", response.status);
+		}
+	}
+
+	public async postCoachV1(request: PostCoachV1Request): Promise<CoachV1Response> {
+		const url = this.host + this.COACH_V1;
+		let response: Response;
+		try {
+			response = await fetch(url, {
+				method: "POST",
+				headers: {"Content-Type": "application/json", ...this.generateHeaders()},
+				body: JSON.stringify(request)
+			});
+		} catch {
+			throw new ApiError("service");
+		}
+		if (response.status === 401) throw new ApiError("unauthorized", response.status);
+		if (response.status === 403) throw new ApiError("forbidden", response.status);
+		if (response.status === 409) throw new ApiError("conflict", response.status);
+		if (response.status === 400) throw new ApiError("request", response.status);
+		if (!response.ok) throw new ApiError("service", response.status);
+		if (response.status !== 201) throw new ApiError("service", response.status);
+		try {
+			const data: unknown = await response.json();
+			if (!this.isCoachResponse(data)) throw new ApiError("service", response.status);
+			return data;
+		} catch (error) {
+			if (error instanceof ApiError) throw error;
+			throw new ApiError("service", response.status);
+		}
+	}
+
 	public async postAthleteV1(request: PostAthleteV1Request): Promise<AthleteV1Response> {
 		const url = this.host + this.ATHLETE_V1;
 		let response: Response;
@@ -302,6 +415,25 @@ class AcademyPortalService {
 			typeof value.limit === "number" &&
 			typeof value.offset === "number" &&
 			value.athletes.every(item => this.isAthleteResponse(item));
+	}
+
+	private isCoachResponse(value: unknown): value is CoachV1Response {
+		return this.isRecord(value) &&
+			typeof value.id === "number" &&
+			typeof value.last_name === "string" &&
+			typeof value.first_name === "string" &&
+			typeof value.birth_date === "string" &&
+			typeof value.phone === "string" &&
+			typeof value.specialization === "string" &&
+			typeof value.activity_status === "string";
+	}
+
+	private isCoachesListResponse(value: unknown): value is GetCoachesV1Response {
+		if (!this.isRecord(value) || !Array.isArray(value.coaches)) return false;
+		return typeof value.total === "number" &&
+			typeof value.limit === "number" &&
+			typeof value.offset === "number" &&
+			value.coaches.every(item => this.isCoachResponse(item));
 	}
 }
 

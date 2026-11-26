@@ -70,6 +70,7 @@ html {
 	font: var(--font);
 	color: var(--ink);
 	-webkit-text-size-adjust: 100%;
+	scrollbar-gutter: stable;
 }
 
 body {

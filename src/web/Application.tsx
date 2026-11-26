@@ -12,6 +12,8 @@ import AdminBootstrapPage from "./page/AdminBootstrapPage";
 import SectionPlaceholder from "./page/SectionPlaceholder";
 import AthletesPage from "./page/AthletesPage";
 import AthleteDetailPage from "./page/AthleteDetailPage";
+import CoachesPage from "./page/CoachesPage";
+import CoachDetailPage from "./page/CoachDetailPage";
 
 const Application: FC = () => {
 	const dispatch = useGlobalDispatch();
@@ -123,7 +125,8 @@ const Application: FC = () => {
 				<Route path="schedule/*" element={<SectionPlaceholder section="schedule"/>}/>
 				<Route path="payments/*" element={<SectionPlaceholder section="payments"/>}/>
 				<Route path="groups/*" element={<SectionPlaceholder section="groups"/>}/>
-				<Route path="coaches/*" element={<SectionPlaceholder section="coaches"/>}/>
+				<Route path="coaches" element={<CoachesPage/>}/>
+				<Route path="coaches/:id" element={<CoachDetailPage/>}/>
 				<Route path="gyms/*" element={<SectionPlaceholder section="gyms"/>}/>
 				<Route path="attendance/*" element={<SectionPlaceholder section="attendance"/>}/>
 				<Route path="athletes" element={<AthletesPage/>}/>

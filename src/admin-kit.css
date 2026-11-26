@@ -282,6 +282,7 @@
 
 .data-table-wrap {
   overflow: auto;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: var(--card);
@@ -1003,9 +1004,12 @@
 }
 
 .academy-app__content {
-  padding: 30px 34px 60px;
+  box-sizing: border-box;
+  width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
+  padding: 30px 34px 60px;
+  min-width: 0;
 }
 
 .academy-app__placeholder {
@@ -1149,6 +1153,33 @@
     max-width: none;
     flex-basis: 100%;
   }
+}
+
+@media (min-width: 701px) {
+  .athletes-list-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .athletes-list-table th:nth-child(1),
+  .athletes-list-table td:nth-child(1) {
+    width: 44%;
+  }
+
+  .athletes-list-table th:nth-child(2),
+  .athletes-list-table td:nth-child(2) {
+    width: 22%;
+  }
+
+  .athletes-list-table th:nth-child(3),
+  .athletes-list-table td:nth-child(3) {
+    width: 34%;
+  }
+
+  .athletes-list-table .data-table__note {
+    max-width: none;
+  }
 }/* --- pages/athletes-detail.css --- */
 .page-head h1 .data-table__status {
   vertical-align: middle;
@@ -1278,6 +1309,171 @@
   }
 
   .athletes-detail__skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+}/* --- pages/coaches.css --- */
+.coaches-toolbar .academy-field {
+  flex: 1;
+  min-width: 200px;
+  max-width: 420px;
+}
+
+@media (max-width: 700px) {
+  .coaches-toolbar .academy-field {
+    max-width: none;
+    flex-basis: 100%;
+  }
+}
+
+@media (min-width: 701px) {
+  .coaches-list-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .coaches-list-table th:nth-child(1),
+  .coaches-list-table td:nth-child(1) {
+    width: 30%;
+  }
+
+  .coaches-list-table th:nth-child(2),
+  .coaches-list-table td:nth-child(2) {
+    width: 16%;
+  }
+
+  .coaches-list-table th:nth-child(3),
+  .coaches-list-table td:nth-child(3) {
+    width: 18%;
+  }
+
+  .coaches-list-table th:nth-child(4),
+  .coaches-list-table td:nth-child(4) {
+    width: 14%;
+  }
+
+  .coaches-list-table th:nth-child(5),
+  .coaches-list-table td:nth-child(5) {
+    width: 22%;
+  }
+
+  .coaches-list-table .data-table__note {
+    max-width: none;
+  }
+}/* --- pages/coaches-detail.css --- */
+.coaches-detail__card {
+  position: relative;
+  padding: 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  max-width: 720px;
+}
+
+.coaches-detail__form-banner {
+  margin: 0 0 16px;
+}
+
+.coaches-detail__form .academy-modal__sections {
+  gap: 20px;
+}
+
+.coaches-detail__form textarea.academy-field__control {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.coaches-detail__card--loading {
+  min-height: 320px;
+}
+
+.coaches-detail__card--loading .coaches-detail__form {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.coaches-detail__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--card-loading-overlay);
+  border-radius: inherit;
+}
+
+.coaches-detail__loading-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.coaches-detail__skeleton-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 20px;
+}
+
+.coaches-detail__skeleton-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.coaches-detail__skeleton-label {
+  width: 72px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line);
+}
+
+.coaches-detail__skeleton-input {
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-shade-from) 0%,
+    var(--skeleton-shade-mid) 50%,
+    var(--skeleton-shade-from) 100%
+  );
+  background-size: 200% 100%;
+  animation: coaches-detail-shimmer 1.2s ease infinite;
+}
+
+.coaches-detail__skeleton-input--wide {
+  grid-column: 1 / -1;
+  height: 88px;
+}
+
+.coaches-detail__skeleton-note {
+  display: block;
+  margin-top: 16px;
+}
+
+@keyframes coaches-detail-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.coaches-detail__page-message {
+  max-width: 520px;
+}
+
+@media (max-width: 700px) {
+  .coaches-detail__card {
+    padding: 16px;
+  }
+
+  .coaches-detail__skeleton-grid {
     grid-template-columns: 1fr;
   }
 }
